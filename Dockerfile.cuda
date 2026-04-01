@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -19,8 +19,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install CPU-only PyTorch, then detector backends
-RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
+# Install CUDA-enabled PyTorch, then detector backends
+RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cu124
 RUN pip install --no-cache-dir openai-whisper typer nudenet "transformers>=4.36" "Pillow>=10"
 
 COPY app/ ./app/
