@@ -529,17 +529,17 @@ def _run_job(job_id: int) -> None:
                 job.error_message = f"Cancelled by user. Cleaned up: {', '.join(Path(p).name for p in removed)}"
 
         if job.status == JobStatus.completed:
-            # Parse sidecar JSON into content report before any file rename
             job.content_report = _build_content_report(job.input_file)
 
-            # Rename files to Plex edition format for movies
-            if req.request_type == RequestType.movie:
-                input_path = Path(job.input_file)
-                clean_stem = _strip_edition(input_path.stem)
-                original_path = input_path.parent / (clean_stem + " {edition-Original}" + input_path.suffix)
-                if input_path.exists() and not original_path.exists():
-                    input_path.rename(original_path)
-                    job.input_file = str(original_path)
+            # Trigger Plex library refresh so editions/versions appear immediately
+            try:
+                from .plex.client import PlexClient
+                plex = PlexClient(db)
+                section_id = plex.get_section_id_for_item(job.plex_key)
+                if section_id:
+                    plex.refresh_section(section_id)
+            except Exception:
+                pass  # best-effort, don't fail the job
 
         db.commit()
         _rollup_request(db, job.request_id)

@@ -393,7 +393,7 @@ async def request_jobs_status(
 
 
 def _delete_job_files(job) -> None:
-    """Delete the clean edition file, sidecar, and restore original filename if renamed."""
+    """Delete the clean edition file and sidecar."""
     import re
     # Delete the output (clean edition) file
     if job.output_file:
@@ -411,15 +411,6 @@ def _delete_job_files(job) -> None:
         orig_sidecar = Path(job.input_file).parent / (orig_stem + ".cleanmedia.json")
         if orig_sidecar.exists():
             orig_sidecar.unlink(missing_ok=True)
-
-    # If the original was renamed to {edition-Original}, rename it back
-    if job.input_file and "{edition-Original}" in job.input_file:
-        edition_path = Path(job.input_file)
-        if edition_path.exists():
-            original_stem = re.sub(r'\s*\{edition-Original\}', '', edition_path.stem).rstrip()
-            original_path = edition_path.parent / (original_stem + edition_path.suffix)
-            if not original_path.exists():
-                edition_path.rename(original_path)
 
 
 @router.post("/requests/{req_id}/delete")

@@ -119,6 +119,23 @@ class PlexClient:
             return []
         return [s for s in streams if s.get("streamType") == 2]
 
+    def refresh_section(self, section_id: str | int) -> None:
+        """Trigger a library section refresh so Plex picks up new/changed files."""
+        url = f"{self.base_url}/library/sections/{section_id}/refresh"
+        try:
+            resp = httpx.get(url, params={"X-Plex-Token": self.token}, timeout=10)
+            resp.raise_for_status()
+        except httpx.HTTPError as exc:
+            raise PlexError(f"Library refresh failed: {exc}") from exc
+
+    def get_section_id_for_item(self, plex_key: str) -> str | None:
+        """Return the library section ID for a given Plex item key."""
+        try:
+            item = self.get_item(plex_key)
+            return str(item.get("librarySectionID", ""))
+        except PlexError:
+            return None
+
     def thumb_url(self, thumb: str) -> str:
         """Build a proxied thumb URL via this server."""
         return f"{self.base_url}{thumb}?X-Plex-Token={self.token}"
