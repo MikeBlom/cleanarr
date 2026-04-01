@@ -20,6 +20,13 @@ jobs:
 
   docker-build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - dockerfile: Dockerfile
+            tag: cleanarr:test
+          - dockerfile: Dockerfile.cuda
+            tag: cleanarr:test-cuda
     steps:
       - uses: actions/checkout@v4
-      - run: docker build -t cleanarr:test .
+      - run: docker build -f ${{ matrix.dockerfile }} -t ${{ matrix.tag }} .

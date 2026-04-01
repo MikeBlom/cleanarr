@@ -75,7 +75,48 @@ CleanArr uses a two-tier configuration system:
 - A Plex Media Server
 - [cleanmedia](https://github.com/MikeBlom/cleanmedia) (mounted as a volume or pre-installed in the image)
 
-For the content filtering worker to function, the container needs access to your media files and sufficient resources to run ML models (GPU recommended for faster processing).
+For the content filtering worker to function, the container needs access to your media files and sufficient resources to run ML models.
+
+## CPU vs GPU
+
+The default Docker image runs on **any machine** using CPU-only inference. This works out of the box — no special hardware required.
+
+If you have an NVIDIA GPU, the CUDA image accelerates the ViT and SigLIP detectors by 5-10x. NudeNet uses ONNX Runtime and runs on CPU in both variants. Whisper (profanity detection) also benefits from GPU acceleration.
+
+| Image | Base | Size | PyTorch | Use case |
+|-------|------|------|---------|----------|
+| `latest` | Ubuntu 22.04 | ~3-4 GB | CPU | Any machine |
+| `latest-cuda` | NVIDIA CUDA 12.4 | ~9.5 GB | CUDA 12.4 | NVIDIA GPU |
+
+### GPU Setup
+
+Prerequisites:
+- NVIDIA GPU with compatible drivers
+- [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) (`nvidia-container-toolkit`)
+
+**Option A** — use the pre-built CUDA image:
+
+```yaml
+# docker-compose.yml
+services:
+  cleanarr:
+    image: ghcr.io/mikeblom/cleanarr:latest-cuda
+    # ... rest of your config
+```
+
+**Option B** — build locally with the compose override:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.cuda.yml up -d --build
+```
+
+Verify GPU access:
+
+```bash
+docker exec cleanarr-cleanarr-1 python3 -c "import torch; print(torch.cuda.is_available())"
+```
+
+The `nudity_device` and `violence_device` settings in the admin UI default to `Auto`, which detects GPU availability at runtime. No configuration change is needed.
 
 ## Roadmap
 
