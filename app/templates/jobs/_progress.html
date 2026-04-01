@@ -1,0 +1,37 @@
+{% if progress %}
+{% set steps = [
+  ("profanity", "Profanity Detection", progress.profanity),
+  ("nudity",    "Nudity Detection",    progress.nudity),
+  ("violence",  "Violence Detection",  progress.violence),
+  ("render",    "Generating Clean Video", progress.render),
+] %}
+{% set visible_steps = [] %}
+{% for key, label, step in steps %}
+  {% if step.status != "skipped" %}
+    {% if visible_steps.append((key, label, step)) %}{% endif %}
+  {% endif %}
+{% endfor %}
+<div class="step-pipeline" data-job-status="{{ job.status.value }}">
+  {% for key, label, step in visible_steps %}
+  {% set st = step.status %}
+  <div class="pipe-step pipe-{{ st }}">
+    <span class="pipe-icon">
+      {% if st == "complete" %}✓
+      {% elif st == "running" %}<span class="spinner"></span>
+      {% else %}<span class="pipe-num">{{ loop.index }}</span>{% endif %}
+    </span>
+    <span class="pipe-label">{{ label }}</span>
+    {% if st == "running" and key == "profanity" and step.pct is defined and step.pct > 0 %}
+      <span class="pipe-pct">{{ step.pct }}%</span>
+    {% elif st == "running" and key == "nudity" and step.pct is defined and step.pct > 0 %}
+      <span class="pipe-pct">{{ step.pct }}%{% if step.detail %} ({{ step.detail }}){% endif %}</span>
+    {% elif st == "running" and key == "violence" and step.pct is defined and step.pct > 0 %}
+      <span class="pipe-pct">{{ step.pct }}%{% if step.detail %} ({{ step.detail }}){% endif %}</span>
+    {% elif st == "running" and key == "render" and step.pct %}
+      <span class="pipe-pct">{{ step.pct }}%</span>
+    {% endif %}
+  </div>
+  {% if not loop.last %}<span class="pipe-sep">›</span>{% endif %}
+  {% endfor %}
+</div>
+{% endif %}

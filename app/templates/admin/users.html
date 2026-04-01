@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Users – Admin – CleanArr{% endblock %}
+{% block content %}
+<h1>Users</h1>
+<table class="data-table">
+  <thead>
+    <tr>
+      <th>Username</th>
+      <th>Plex ID</th>
+      <th>Email</th>
+      <th>Admin</th>
+      <th>Approved</th>
+      <th>Last Login</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for u in users %}
+    <tr>
+      <td>{{ u.username }}</td>
+      <td><code>{{ u.plex_id }}</code></td>
+      <td>{{ u.email or "—" }}</td>
+      <td>{% if u.is_admin %}✓{% endif %}</td>
+      <td>{% if u.is_approved %}✓{% endif %}</td>
+      <td>{{ u.last_login.strftime("%Y-%m-%d %H:%M") if u.last_login else "—" }}</td>
+      <td>
+        {% if not u.is_approved %}
+        <form method="post" action="/admin/users/{{ u.id }}/approve" style="display:inline">
+          <button class="btn btn-sm btn-primary" type="submit">Approve</button>
+        </form>
+        {% else %}
+        <form method="post" action="/admin/users/{{ u.id }}/revoke" style="display:inline">
+          <button class="btn btn-sm btn-danger" type="submit">Revoke</button>
+        </form>
+        {% endif %}
+        {% if u.id != user.id %}
+        <form method="post" action="/admin/users/{{ u.id }}/toggle-admin" style="display:inline">
+          <button class="btn btn-sm" type="submit">
+            {% if u.is_admin %}Remove Admin{% else %}Make Admin{% endif %}
+          </button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

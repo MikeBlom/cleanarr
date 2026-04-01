@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Dashboard – CleanArr{% endblock %}
+{% block content %}
+<h1>Welcome, {{ user.username }}</h1>
+<div class="card-grid">
+  <a href="/browse" class="card">
+    <h2>Browse Library</h2>
+    <p>Find movies and shows to request clean versions of.</p>
+  </a>
+  <a href="/requests" class="card">
+    <h2>My Requests</h2>
+    <p>Track the status of your conversion requests.</p>
+  </a>
+  {% if user.is_admin %}
+  <a href="/admin/queue" class="card">
+    <h2>Job Queue</h2>
+    <p>Monitor and manage the conversion queue.</p>
+  </a>
+  <a href="/admin/users" class="card">
+    <h2>Users</h2>
+    <p>Approve and manage user access.</p>
+  </a>
+  {% endif %}
+</div>
+{% endblock %}

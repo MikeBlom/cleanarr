@@ -1,0 +1,29 @@
+<div class="parental-guide">
+  <h2>Parental Guide</h2>
+
+  <div class="pg-badges">
+    {% for key, info in guide.items() %}
+    <div class="pg-badge pg-{{ info.severity | lower | replace(' ', '') }}">
+      <span class="pg-badge-label">{{ info.label }}</span>
+      <span class="pg-badge-severity">{{ info.severity }}</span>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% for key, info in guide.items() %}
+  {% if info.descriptions %}
+  <details class="pg-details">
+    <summary>{{ info.label }} <span class="pg-severity-tag pg-{{ info.severity | lower | replace(' ', '') }}">{{ info.severity }}</span></summary>
+    <ul>
+      {% for desc in info.descriptions %}
+      <li>{{ desc }}</li>
+      {% endfor %}
+    </ul>
+  </details>
+  {% endif %}
+  {% endfor %}
+
+  <p class="pg-attribution">
+    <a href="https://www.imdb.com/title/{{ imdb_id }}/parentalguide" target="_blank" rel="noopener">View full parental guide on IMDB</a>
+  </p>
+</div>

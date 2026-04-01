@@ -1,0 +1,27 @@
+{% if active_jobs %}
+<div id="job-progress-section"
+     data-active="{{ 'true' if has_active else 'false' }}"
+     {% if has_active %}
+     hx-get="/browse/item/{{ plex_key }}/job-progress"
+     hx-trigger="every 2s [this.dataset.active === 'true']"
+     hx-swap="outerHTML"
+     {% endif %}>
+  <h2>Job Progress</h2>
+  {% for job in active_jobs %}
+  <div class="active-job-progress" style="margin-bottom:0.75rem;">
+    <div class="meta-row" style="margin-bottom:0.25rem;">
+      <strong>{{ job.title }}</strong>
+      <span class="badge badge-{{ job.status.value }}">{{ job.status.value }}</span>
+      <a href="/jobs/{{ job.id }}">Log →</a>
+      {% if job.request_id %}<a href="/requests/{{ job.request_id }}">Request →</a>{% endif %}
+    </div>
+    {% if job.id in jobs_progress %}
+    {% set progress = jobs_progress[job.id] %}
+    {% include "jobs/_progress.html" %}
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div id="job-progress-section"></div>
+{% endif %}

@@ -1,0 +1,95 @@
+{# OOB swaps to show AI recommendations as hints (without overriding user's toggle state) #}
+{% if profanity_rec %}
+<div id="filter-profanity-wrap" hx-swap-oob="innerHTML">
+  <label>
+    <input type="checkbox" name="filter_profanity" value="true" {% if profanity_rec.should_filter %}checked{% endif %}>
+    Remove profanity (audio mute/bleep)
+  </label>
+  <p class="field-hint ai-hint">{{ profanity_rec.reason }}</p>
+  <p class="field-hint ai-override-hint" style="display:none; color: var(--warning, #e6a700);">You are overriding the AI recommendation.</p>
+</div>
+{% else %}
+<div id="filter-profanity-wrap" hx-swap-oob="innerHTML">
+  <label>
+    <input type="checkbox" name="filter_profanity" value="true" checked>
+    Remove profanity (audio mute/bleep)
+  </label>
+  <p class="field-hint ai-hint" style="color: var(--muted, #888);">AI analysis unavailable — using default.</p>
+</div>
+{% endif %}
+
+{% if nudity_rec %}
+<div id="filter-nudity-wrap" hx-swap-oob="innerHTML">
+  <label>
+    <input type="checkbox" name="filter_nudity" value="true" {% if nudity_rec.should_filter %}checked{% endif %}>
+    Black out nudity
+  </label>
+  <p class="field-hint ai-hint">{{ nudity_rec.reason }}</p>
+  <p class="field-hint ai-override-hint" style="display:none; color: var(--warning, #e6a700);">You are overriding the AI recommendation.</p>
+</div>
+{% else %}
+<div id="filter-nudity-wrap" hx-swap-oob="innerHTML">
+  <label>
+    <input type="checkbox" name="filter_nudity" value="true" checked>
+    Black out nudity
+  </label>
+  <p class="field-hint ai-hint" style="color: var(--muted, #888);">AI analysis unavailable — using default.</p>
+</div>
+{% endif %}
+
+{% if violence_rec %}
+<div id="filter-violence-wrap" hx-swap-oob="innerHTML">
+  <label>
+    <input type="checkbox" name="filter_violence" value="true" {% if violence_rec.should_filter %}checked{% endif %}>
+    Black out violence/gore
+  </label>
+  <p class="field-hint ai-hint">{{ violence_rec.reason }}</p>
+  <p class="field-hint ai-override-hint" style="display:none; color: var(--warning, #e6a700);">You are overriding the AI recommendation.</p>
+</div>
+{% else %}
+<div id="filter-violence-wrap" hx-swap-oob="innerHTML">
+  <label>
+    <input type="checkbox" name="filter_violence" value="true">
+    Black out violence/gore
+  </label>
+  <p class="field-hint ai-hint" style="color: var(--muted, #888);">AI analysis unavailable — using default.</p>
+</div>
+{% endif %}
+
+{# OOB swap to enable the submit button #}
+<button type="submit" class="btn btn-primary" id="submit-request-btn" hx-swap-oob="outerHTML">
+  Submit Request
+</button>
+
+{# Script to store AI recs and wire up inline override warnings #}
+<div id="ai-enable-script" hx-swap-oob="afterbegin:body" style="display:none;">
+<script>
+(function() {
+  window._aiRec = {
+    profanity: {{ profanity_rec.should_filter | tojson if profanity_rec else 'null' }},
+    nudity: {{ nudity_rec.should_filter | tojson if nudity_rec else 'null' }},
+    violence: {{ violence_rec.should_filter | tojson if violence_rec else 'null' }},
+    ready: true
+  };
+
+  function watchOverride(name, recValue) {
+    if (recValue === null) return;
+    var wrap = document.getElementById('filter-' + name + '-wrap');
+    if (!wrap) return;
+    var cb = wrap.querySelector('input[type="checkbox"]');
+    var hint = wrap.querySelector('.ai-override-hint');
+    if (!cb || !hint) return;
+
+    function update() {
+      hint.style.display = (cb.checked !== recValue) ? '' : 'none';
+    }
+    cb.addEventListener('change', update);
+    update();
+  }
+
+  watchOverride('profanity', window._aiRec.profanity);
+  watchOverride('nudity', window._aiRec.nudity);
+  watchOverride('violence', window._aiRec.violence);
+})();
+</script>
+</div>

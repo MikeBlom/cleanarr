@@ -1,0 +1,18 @@
+services:
+  cleanarr:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8765:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./app:/app/app
+      - ./data:/data
+      # Mount your media directories (adjust paths for your system):
+      # - /path/to/movies:/media/movies
+      # - /path/to/tv:/media/tv
+      # Mount cleanmedia source (for pip install at startup):
+      # - /path/to/cleanmedia:/cleanmedia
+    environment:
+      - DATABASE_URL=sqlite:////data/cleanarr.db

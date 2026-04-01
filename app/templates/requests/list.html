@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}My Requests – CleanArr{% endblock %}
+{% block content %}
+<h1>Conversion Requests</h1>
+{% if not requests %}
+<p>No requests yet. <a href="/browse">Browse your library</a> to get started.</p>
+{% else %}
+<table class="data-table">
+  <thead>
+    <tr>
+      <th>Title</th>
+      <th>Type</th>
+      <th>Status</th>
+      <th>Requested by</th>
+      <th>Requested</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for req in requests %}
+    <tr>
+      <td>{{ req.title }}</td>
+      <td>{{ req.request_type.value }}</td>
+      <td><span class="badge badge-{{ req.status.value }}">{{ req.status.value }}</span></td>
+      <td>{{ req.user.username if req.user else "—" }}</td>
+      <td>{{ req.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+      <td>
+        <a href="/requests/{{ req.id }}" class="btn btn-sm">Details →</a>
+        {% if req.status.value not in ("running",) %}
+        <form method="post" action="/requests/{{ req.id }}/delete" style="display:inline"
+              onsubmit="return confirm('Delete {{ req.title }}?\n\nThis will also remove clean edition files from disk.')">
+          <input type="hidden" name="delete_files" value="true">
+          <button class="btn btn-sm btn-danger" type="submit">✕</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

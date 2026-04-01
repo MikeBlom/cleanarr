@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cleanarr"
+version = "0.1.0"
+description = "Web interface for media content filtering"
+requires-python = ">=3.11"
+license = "GPL-3.0-or-later"
+readme = "README.md"
+keywords = ["plex", "media", "filter", "profanity", "nudity", "violence", "cleanarr"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Programming Language :: Python :: 3.11",
+    "Framework :: FastAPI",
+    "Topic :: Multimedia :: Video",
+]
+dependencies = [
+    "fastapi==0.115.5",
+    "uvicorn[standard]==0.32.1",
+    "jinja2==3.1.4",
+    "python-multipart==0.0.12",
+    "httpx==0.27.2",
+    "sqlalchemy==2.0.36",
+    "pydantic-settings==2.6.1",
+    "itsdangerous==2.2.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/MikeBlom/cleanarr"
+Issues = "https://github.com/MikeBlom/cleanarr/issues"

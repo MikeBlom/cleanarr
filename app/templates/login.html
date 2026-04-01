@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Sign In – CleanArr{% endblock %}
+{% block content %}
+<div class="login-box">
+  <h1>CleanArr</h1>
+  <p>Sign in with your Plex account to request clean conversions.</p>
+  {% if request.query_params.get("error") %}
+  <div class="alert alert-error">Authentication failed. Please try again.</div>
+  {% endif %}
+  <form method="post" action="/auth/plex/start">
+    <button type="submit" class="btn btn-plex">Sign in with Plex</button>
+  </form>
+</div>
+{% endblock %}

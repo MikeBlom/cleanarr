@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Queue – Admin – CleanArr{% endblock %}
+{% block content %}
+<h1>Job Queue</h1>
+{% if not jobs %}
+<p>No active or failed jobs.</p>
+{% else %}
+<table class="data-table">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Title</th>
+      <th>Status</th>
+      <th>Created</th>
+      <th>Started</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for job in jobs %}
+    <tr>
+      <td><a href="/jobs/{{ job.id }}">{{ job.id }}</a></td>
+      <td>{{ job.title }}</td>
+      <td><span class="badge badge-{{ job.status.value }}">{{ job.status.value }}</span></td>
+      <td>{{ job.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+      <td>{{ job.started_at.strftime("%H:%M:%S") if job.started_at else "—" }}</td>
+      <td class="action-cell">
+        {% if job.status.value == "queued" %}
+        <form method="post" action="/admin/jobs/{{ job.id }}/move-up" style="display:inline">
+          <button class="btn btn-sm" type="submit" title="Move up">↑</button>
+        </form>
+        <form method="post" action="/admin/jobs/{{ job.id }}/move-down" style="display:inline">
+          <button class="btn btn-sm" type="submit" title="Move down">↓</button>
+        </form>
+        <form method="post" action="/admin/jobs/{{ job.id }}/cancel" style="display:inline">
+          <button class="btn btn-sm btn-danger" type="submit">Cancel</button>
+        </form>
+        {% elif job.status.value == "running" %}
+        <form method="post" action="/admin/jobs/{{ job.id }}/cancel" style="display:inline"
+              onsubmit="return confirm('Cancel this running job? The process will be killed and partial output cleaned up.')">
+          <button class="btn btn-sm btn-danger" type="submit">Cancel</button>
+        </form>
+        {% endif %}
+        {% if job.status.value in ("failed", "skipped") %}
+        <form method="post" action="/admin/jobs/{{ job.id }}/retry" style="display:inline">
+          <button class="btn btn-sm btn-primary" type="submit">Retry</button>
+        </form>
+        {% endif %}
+        <a href="/jobs/{{ job.id }}" class="btn btn-sm">Log</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

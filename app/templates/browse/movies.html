@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}Movies – CleanArr{% endblock %}
+{% block content %}
+
+{% set current_page = (offset // limit) + 1 %}
+{% set total_pages = ((total + limit - 1) // limit) if total > 0 else 1 %}
+
+<div class="toolbar">
+  <h1>Movies <small>({{ total }} total)</small></h1>
+  <button id="view-toggle" class="btn btn-sm">☰ Table</button>
+</div>
+
+<form method="get" action="/browse/section/{{ section_id }}" class="search-form">
+  <input type="hidden" name="limit" value="{{ limit }}">
+  <input type="text" name="q" value="{{ q }}" placeholder="Search movies…">
+  <button type="submit" class="btn">Search</button>
+  {% if q %}<a href="/browse/section/{{ section_id }}?limit={{ limit }}" class="btn">Clear</a>{% endif %}
+</form>
+
+<!-- Grid view -->
+<div id="view-grid" class="media-grid">
+  {% for item in items %}
+  <a href="/browse/item/{{ item.ratingKey }}" class="media-card">
+    {% if item.thumb %}
+    <img src="/plex-thumb?url={{ item.thumb | urlencode }}" alt="{{ item.title }}" loading="lazy">
+    {% else %}
+    <div class="no-thumb">{{ item.title[0] }}</div>
+    {% endif %}
+    <div class="media-title">{{ item.title }}</div>
+    {% if item.year %}<div class="media-year">{{ item.year }}</div>{% endif %}
+    {% if item.ratingKey | string in cleaned_keys %}<div class="clean-badge">✓ Clean</div>{% endif %}
+  </a>
+  {% else %}
+  <p>No items found.</p>
+  {% endfor %}
+</div>
+
+<!-- Table view -->
+<table id="view-table" class="data-table hidden">
+  <thead>
+    <tr><th>Poster</th><th>Title</th><th>Year</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for item in items %}
+    <tr>
+      <td class="thumb-cell">
+        <a href="/browse/item/{{ item.ratingKey }}">
+          {% if item.thumb %}
+          <img src="/plex-thumb?url={{ item.thumb | urlencode }}" alt="" loading="lazy" class="table-thumb">
+          {% else %}
+          <div class="table-thumb-placeholder">{{ item.title[0] }}</div>
+          {% endif %}
+        </a>
+      </td>
+      <td><a href="/browse/item/{{ item.ratingKey }}">{{ item.title }}</a></td>
+      <td>{{ item.year or "—" }}</td>
+      <td>{% if item.ratingKey | string in cleaned_keys %}<span class="badge badge-completed">✓ Clean</span>{% endif %}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="3">No items found.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- Pagination -->
+{% if not q and total_pages > 1 %}
+<div class="pagination-bar">
+  <div class="page-links">
+    {% if current_page > 1 %}
+    <a href="/browse/section/{{ section_id }}?offset=0&limit={{ limit }}" class="btn btn-sm">«</a>
+    <a href="/browse/section/{{ section_id }}?offset={{ (current_page - 2) * limit }}&limit={{ limit }}" class="btn btn-sm">‹</a>
+    {% endif %}
+
+    {% set ns = namespace(last_shown=0) %}
+    {% for p in range(1, total_pages + 1) %}
+      {% if p == 1 or p == total_pages or (p >= current_page - 2 and p <= current_page + 2) %}
+        {% if ns.last_shown and p - ns.last_shown > 1 %}<span class="page-ellipsis">…</span>{% endif %}
+        <a href="/browse/section/{{ section_id }}?offset={{ (p - 1) * limit }}&limit={{ limit }}"
+           class="btn btn-sm{% if p == current_page %} active{% endif %}">{{ p }}</a>
+        {% set ns.last_shown = p %}
+      {% endif %}
+    {% endfor %}
+
+    {% if current_page < total_pages %}
+    <a href="/browse/section/{{ section_id }}?offset={{ current_page * limit }}&limit={{ limit }}" class="btn btn-sm">›</a>
+    <a href="/browse/section/{{ section_id }}?offset={{ (total_pages - 1) * limit }}&limit={{ limit }}" class="btn btn-sm">»</a>
+    {% endif %}
+  </div>
+
+  <div class="page-controls">
+    <form class="jump-form" onsubmit="jumpToPage(event, '/browse/section/{{ section_id }}', {{ limit }})">
+      <input type="number" min="1" max="{{ total_pages }}" placeholder="Page" class="page-jump-input">
+      <button type="submit" class="btn btn-sm">Go</button>
+    </form>
+    <div class="per-page">
+      Per page:
+      {% for n in [25, 50, 100, 200] %}
+      <a href="/browse/section/{{ section_id }}?offset=0&limit={{ n }}"
+         class="btn btn-sm{% if limit == n %} active{% endif %}">{{ n }}</a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<script>
+(function () {
+  const grid = document.getElementById('view-grid');
+  const table = document.getElementById('view-table');
+  const btn = document.getElementById('view-toggle');
+
+  function applyView(v) {
+    if (v === 'table') {
+      grid.classList.add('hidden');
+      table.classList.remove('hidden');
+      btn.textContent = '⊞ Grid';
+    } else {
+      table.classList.add('hidden');
+      grid.classList.remove('hidden');
+      btn.textContent = '☰ Table';
+    }
+  }
+
+  applyView(localStorage.getItem('cleanarr_view') || 'grid');
+
+  btn.addEventListener('click', function () {
+    const next = (localStorage.getItem('cleanarr_view') || 'grid') === 'grid' ? 'table' : 'grid';
+    localStorage.setItem('cleanarr_view', next);
+    applyView(next);
+  });
+})();
+
+function jumpToPage(e, base, limit) {
+  e.preventDefault();
+  const p = parseInt(e.target.querySelector('input').value, 10);
+  if (p >= 1) window.location = base + '?offset=' + ((p - 1) * limit) + '&limit=' + limit;
+}
+</script>
+{% endblock %}

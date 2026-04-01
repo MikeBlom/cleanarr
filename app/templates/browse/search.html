@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Search – CleanArr{% endblock %}
+{% block content %}
+
+<h1>Search {% if q %}<small>results for "{{ q }}"</small>{% endif %}</h1>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if q and not hubs %}
+<p class="muted">No results found for "{{ q }}".</p>
+{% endif %}
+
+{% for hub in hubs %}
+<section class="search-hub">
+  <h2 class="search-hub-title">{{ hub.title }}</h2>
+  <table class="data-table">
+    <thead>
+      <tr>
+        {% if hub.type in ("movie", "show") %}
+        <th>Poster</th><th>Title</th><th>Year</th>
+        {% elif hub.type == "episode" %}
+        <th>Episode</th><th>Show</th><th>Air Date</th>
+        {% elif hub.type == "season" %}
+        <th>Season</th><th>Show</th><th>Episodes</th>
+        {% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in hub.Metadata %}
+      <tr>
+        {% if hub.type in ("movie", "show") %}
+        <td class="thumb-cell">
+          <a href="/browse/item/{{ item.ratingKey }}">
+            {% if item.thumb %}
+            <img src="/plex-thumb?url={{ item.thumb | urlencode }}" alt="" loading="lazy" class="table-thumb">
+            {% else %}
+            <div class="table-thumb-placeholder">{{ item.title[0] }}</div>
+            {% endif %}
+          </a>
+        </td>
+        <td><a href="/browse/item/{{ item.ratingKey }}">{{ item.title }}</a></td>
+        <td>{{ item.year or "—" }}</td>
+        {% elif hub.type == "episode" %}
+        <td>
+          <a href="/browse/item/{{ item.ratingKey }}">
+            <span class="ep-num">S{{ "%02d"|format(item.parentIndex|int) }}E{{ "%02d"|format(item.index|int) }}</span>
+            {{ item.title }}
+          </a>
+        </td>
+        <td><a href="/browse/item/{{ item.grandparentRatingKey }}">{{ item.grandparentTitle }}</a></td>
+        <td>{{ item.originallyAvailableAt or "—" }}</td>
+        {% elif hub.type == "season" %}
+        <td><a href="/browse/item/{{ item.ratingKey }}">Season {{ item.index }}</a></td>
+        <td><a href="/browse/item/{{ item.parentRatingKey }}">{{ item.parentTitle }}</a></td>
+        <td>{{ item.leafCount or "—" }}</td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endfor %}
+
+{% endblock %}

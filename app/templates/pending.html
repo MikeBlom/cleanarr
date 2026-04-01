@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Pending Approval – CleanArr{% endblock %}
+{% block content %}
+<div class="login-box">
+  <h1>Account Pending Approval</h1>
+  <p>Your Plex account <strong>{{ user.username }}</strong> has been registered but is awaiting admin approval.</p>
+  <p>Please contact the administrator or check back later.</p>
+  <form method="post" action="/logout">
+    <button type="submit" class="btn">Sign out</button>
+  </form>
+</div>
+{% endblock %}

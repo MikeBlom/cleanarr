@@ -1,0 +1,277 @@
+<form method="post" action="/request" id="clean-form">
+  <input type="hidden" name="plex_key" value="{{ item.ratingKey }}">
+  <input type="hidden" name="title" value="{{ item.title }}">
+  <input type="hidden" name="request_type" value="{{ item.type or 'movie' }}">
+
+  <fieldset>
+    <legend>Filters</legend>
+    <div id="filter-profanity-wrap">
+      <label>
+        <input type="checkbox" name="filter_profanity" value="true" checked>
+        Remove profanity (audio mute/bleep)
+      </label>
+      <p class="field-hint ai-hint ai-loading"><span class="spinner"></span> AI evaluating profanity...</p>
+    </div>
+    <div id="filter-nudity-wrap">
+      <label>
+        <input type="checkbox" name="filter_nudity" value="true" checked>
+        Black out nudity
+      </label>
+      <p class="field-hint ai-hint ai-loading"><span class="spinner"></span> AI evaluating nudity...</p>
+    </div>
+    <div id="filter-violence-wrap">
+      <label>
+        <input type="checkbox" name="filter_violence" value="true">
+        Black out violence/gore
+      </label>
+      <p class="field-hint ai-hint ai-loading"><span class="spinner"></span> AI evaluating violence and gore...</p>
+    </div>
+  </fieldset>
+
+  {% if audio_streams %}
+  <fieldset>
+    <legend>Audio Track</legend>
+    <select name="audio_stream_index" class="select-input">
+      {% for stream in audio_streams %}
+      <option value="{{ stream.index }}" {% if stream.selected %}selected{% endif %}>
+        {{ stream.displayTitle or stream.extendedDisplayTitle or ((stream.language or "Unknown") ~ " (" ~ stream.codec|upper ~ " " ~ (stream.channels or "?") ~ "ch)") }}
+      </option>
+      {% endfor %}
+    </select>
+    <p class="field-hint">Select which audio track to scan for profanity. Defaults to the track Plex would play.</p>
+  </fieldset>
+  {% endif %}
+
+  <fieldset>
+    <legend>Options</legend>
+    <label>
+      <input type="checkbox" name="use_bleep" value="true" checked>
+      Bleep instead of silence
+    </label>
+    <label>
+      <input type="checkbox" name="use_whisper" value="true">
+      Force full Whisper transcription (slower — only needed if no subtitles)
+    </label>
+  </fieldset>
+
+  <fieldset id="profanity-overrides">
+    <legend>
+      <label style="cursor:pointer">
+        <input type="checkbox" id="profanity-override-toggle" onchange="var f=document.getElementById('profanity-override-fields');f.classList.toggle('hidden',!this.checked);f.querySelectorAll('input,select,textarea').forEach(function(i){i.disabled=!this.checked}.bind(this))">
+        Override profanity detection settings
+      </label>
+    </legend>
+    <div id="profanity-override-fields" class="hidden">
+      <p class="field-hint" style="margin-bottom:0.5rem;">Add extra words/phrases on top of the global list. Changes here apply only to this request.</p>
+      <label class="field">
+        <span class="field-label">Extra words to filter (one per line)</span>
+        <textarea name="profanity_extra_words" class="select-input textarea-med" spellcheck="false" disabled></textarea>
+        <span class="field-hint">These are added to the global word list, not replacing it</span>
+      </label>
+      <label class="field">
+        <span class="field-label">Extra phrases to filter (one per line)</span>
+        <textarea name="profanity_extra_phrases" class="select-input textarea-med" spellcheck="false" disabled></textarea>
+        <span class="field-hint">These are added to the global phrase list, not replacing it</span>
+      </label>
+      <label class="field">
+        <span class="field-label">Audio padding (ms)</span>
+        <input type="number" name="profanity_padding_ms" value="{{ profanity_defaults.profanity_padding_ms }}" class="select-input input-narrow" min="0" max="2000" disabled>
+      </label>
+      <label class="field">
+        <span class="field-label">Whisper model</span>
+        <select name="whisper_model_override" class="select-input" disabled>
+          {% for m in ["tiny", "base", "small", "medium", "large"] %}
+          <option value="{{ m }}" {% if profanity_defaults.whisper_model == m %}selected{% endif %}>{{ m }}{% if m == "tiny" %} (fastest){% elif m == "large" %} (most accurate, slowest){% endif %}</option>
+          {% endfor %}
+        </select>
+        <span class="field-hint">Larger models are more accurate but much slower</span>
+      </label>
+    </div>
+  </fieldset>
+
+  <fieldset id="nudity-overrides">
+    <legend>
+      <label style="cursor:pointer">
+        <input type="checkbox" id="nudity-override-toggle" onchange="var f=document.getElementById('nudity-override-fields');f.classList.toggle('hidden',!this.checked);f.querySelectorAll('input,select').forEach(function(i){i.disabled=!this.checked}.bind(this))">
+        Override nudity detection settings
+      </label>
+    </legend>
+    <div id="nudity-override-fields" class="hidden">
+      <p class="field-hint" style="margin-bottom:0.5rem;">Leave unchanged to use global defaults. Changes here apply only to this request.</p>
+      <label class="field">
+        <span class="field-label">Confidence threshold</span>
+        <input type="number" name="nudity_confidence" value="{{ nudity_defaults.nudity_confidence }}" class="select-input input-narrow" min="0" max="1" step="0.05" disabled>
+        <span class="field-hint">Lower = catches more nudity but more false positives</span>
+      </label>
+      <label class="field">
+        <span class="field-label">Sample FPS</span>
+        <input type="number" name="nudity_sample_fps" value="{{ nudity_defaults.nudity_sample_fps }}" class="select-input input-narrow" min="0.5" max="10" step="0.5" disabled>
+        <span class="field-hint">Higher = slower but more thorough</span>
+      </label>
+      <label class="field">
+        <span class="field-label">Video padding (ms)</span>
+        <input type="number" name="nudity_padding_ms" value="{{ nudity_defaults.nudity_padding_ms }}" class="select-input input-narrow" min="0" max="5000" disabled>
+      </label>
+      <label class="field">
+        <span class="field-label">Scene merge gap (ms)</span>
+        <input type="number" name="nudity_scene_merge_gap_ms" value="{{ nudity_defaults.nudity_scene_merge_gap_ms }}" class="select-input input-narrow" min="0" max="30000" step="500" disabled>
+        <span class="field-hint">Bridge detections within this gap into one blackout</span>
+      </label>
+      <div class="field">
+        <span class="field-label">Categories</span>
+        <div class="checkbox-group">
+          {% set all_cats = [
+            ("FEMALE_BREAST_EXPOSED", "Female breast exposed"),
+            ("FEMALE_GENITALIA_EXPOSED", "Female genitalia exposed"),
+            ("MALE_GENITALIA_EXPOSED", "Male genitalia exposed"),
+            ("ANUS_EXPOSED", "Anus exposed"),
+            ("BUTTOCKS_EXPOSED", "Buttocks exposed"),
+          ] %}
+          {% set enabled_cats = nudity_defaults.nudity_categories | from_json if nudity_defaults.nudity_categories else [] %}
+          {% for value, label in all_cats %}
+          <label>
+            <input type="checkbox" name="nudity_category" value="{{ value }}" {% if value in enabled_cats %}checked{% endif %} disabled>
+            {{ label }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="field">
+        <span class="field-label">Detectors</span>
+        <div class="checkbox-group">
+          {% set all_dets = [("nudenet", "NudeNet"), ("vit_nsfw", "ViT NSFW")] %}
+          {% set enabled_dets = nudity_defaults.nudity_detectors | from_json if nudity_defaults.nudity_detectors else ["nudenet"] %}
+          {% for det_id, det_label in all_dets %}
+          <label>
+            <input type="checkbox" name="nudity_detector" value="{{ det_id }}" {% if det_id in enabled_dets %}checked{% endif %} disabled>
+            {{ det_label }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <label class="field">
+        <span class="field-label">Ensemble strategy</span>
+        <select name="nudity_ensemble_strategy" class="select-input" disabled>
+          {% for val, lbl in [("weighted_average", "Weighted average"), ("unanimous", "Unanimous"), ("any", "Any detector")] %}
+          <option value="{{ val }}" {% if nudity_defaults.nudity_ensemble_strategy == val %}selected{% endif %}>{{ lbl }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="field">
+        <span class="field-label">Frame extraction mode</span>
+        <select name="nudity_extraction_mode" class="select-input" disabled>
+          {% for val, lbl in [("fixed_fps", "Fixed FPS"), ("keyframe", "Keyframe"), ("auto", "Auto")] %}
+          <option value="{{ val }}" {% if nudity_defaults.nudity_extraction_mode == val %}selected{% endif %}>{{ lbl }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="field">
+        <input type="checkbox" name="nudity_temporal_enabled" value="true" {% if nudity_defaults.nudity_temporal_enabled == "true" %}checked{% endif %} disabled>
+        Enable temporal consistency filter
+      </label>
+      <label class="field">
+        <span class="field-label">Temporal window</span>
+        <input type="number" name="nudity_temporal_window" value="{{ nudity_defaults.nudity_temporal_window }}" class="select-input input-narrow" min="3" max="15" step="2" disabled>
+      </label>
+      <label class="field">
+        <span class="field-label">Temporal min flagged</span>
+        <input type="number" name="nudity_temporal_min_flagged" value="{{ nudity_defaults.nudity_temporal_min_flagged }}" class="select-input input-narrow" min="1" max="15" disabled>
+      </label>
+    </div>
+  </fieldset>
+
+  <fieldset id="violence-overrides">
+    <legend>
+      <label style="cursor:pointer">
+        <input type="checkbox" id="violence-override-toggle" onchange="var f=document.getElementById('violence-override-fields');f.classList.toggle('hidden',!this.checked);f.querySelectorAll('input,select').forEach(function(i){i.disabled=!this.checked}.bind(this))">
+        Override violence detection settings
+      </label>
+    </legend>
+    <div id="violence-override-fields" class="hidden">
+      <p class="field-hint" style="margin-bottom:0.5rem;">Leave unchanged to use global defaults. Changes here apply only to this request.</p>
+      <label class="field">
+        <span class="field-label">Confidence threshold</span>
+        <input type="number" name="violence_confidence" value="{{ violence_defaults.violence_confidence }}" class="select-input input-narrow" min="0" max="1" step="0.05" disabled>
+        <span class="field-hint">Lower = catches more violence but more false positives</span>
+      </label>
+      <label class="field">
+        <span class="field-label">Sample FPS</span>
+        <input type="number" name="violence_sample_fps" value="{{ violence_defaults.violence_sample_fps }}" class="select-input input-narrow" min="0.5" max="10" step="0.5" disabled>
+      </label>
+      <label class="field">
+        <span class="field-label">Video padding (ms)</span>
+        <input type="number" name="violence_padding_ms" value="{{ violence_defaults.violence_padding_ms }}" class="select-input input-narrow" min="0" max="5000" disabled>
+      </label>
+      <label class="field">
+        <span class="field-label">Scene merge gap (ms)</span>
+        <input type="number" name="violence_scene_merge_gap_ms" value="{{ violence_defaults.violence_scene_merge_gap_ms }}" class="select-input input-narrow" min="0" max="30000" step="500" disabled>
+      </label>
+      <div class="field">
+        <span class="field-label">Categories</span>
+        <div class="checkbox-group">
+          {% set all_viol_cats = [
+            ("GORE_BLOODSHED", "Gore / bloodshed"),
+            ("VIOLENCE_FIGHTING", "Violence / fighting"),
+          ] %}
+          {% set enabled_viol_cats = violence_defaults.violence_categories | from_json if violence_defaults.violence_categories else [] %}
+          {% for value, label in all_viol_cats %}
+          <label>
+            <input type="checkbox" name="violence_category" value="{{ value }}" {% if value in enabled_viol_cats %}checked{% endif %} disabled>
+            {{ label }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="field">
+        <span class="field-label">Detectors</span>
+        <div class="checkbox-group">
+          {% set all_viol_dets = [("siglip_violence", "SigLIP Violence"), ("vit_violence", "ViT Violence")] %}
+          {% set enabled_viol_dets = violence_defaults.violence_detectors | from_json if violence_defaults.violence_detectors else ["siglip_violence"] %}
+          {% for det_id, det_label in all_viol_dets %}
+          <label>
+            <input type="checkbox" name="violence_detector" value="{{ det_id }}" {% if det_id in enabled_viol_dets %}checked{% endif %} disabled>
+            {{ det_label }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <label class="field">
+        <span class="field-label">Ensemble strategy</span>
+        <select name="violence_ensemble_strategy" class="select-input" disabled>
+          {% for val, lbl in [("weighted_average", "Weighted average"), ("unanimous", "Unanimous"), ("any", "Any detector")] %}
+          <option value="{{ val }}" {% if violence_defaults.violence_ensemble_strategy == val %}selected{% endif %}>{{ lbl }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="field">
+        <span class="field-label">Frame extraction mode</span>
+        <select name="violence_extraction_mode" class="select-input" disabled>
+          {% for val, lbl in [("fixed_fps", "Fixed FPS"), ("keyframe", "Keyframe"), ("auto", "Auto")] %}
+          <option value="{{ val }}" {% if violence_defaults.violence_extraction_mode == val %}selected{% endif %}>{{ lbl }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="field">
+        <input type="checkbox" name="violence_temporal_enabled" value="true" {% if violence_defaults.violence_temporal_enabled == "true" %}checked{% endif %} disabled>
+        Enable temporal consistency filter
+      </label>
+      <label class="field">
+        <span class="field-label">Temporal window</span>
+        <input type="number" name="violence_temporal_window" value="{{ violence_defaults.violence_temporal_window }}" class="select-input input-narrow" min="3" max="15" step="2" disabled>
+      </label>
+      <label class="field">
+        <span class="field-label">Temporal min flagged</span>
+        <input type="number" name="violence_temporal_min_flagged" value="{{ violence_defaults.violence_temporal_min_flagged }}" class="select-input input-narrow" min="1" max="15" disabled>
+      </label>
+    </div>
+  </fieldset>
+
+  <button type="submit" class="btn btn-primary" id="submit-request-btn" disabled>
+    <span class="spinner"></span> Waiting for AI analysis...
+  </button>
+</form>
+
+{# This fires immediately — the AI advice response will OOB-swap the filter wraps and enable the form #}
+<div hx-get="/browse/item/{{ plex_key }}/ai-filter-advice"
+     hx-trigger="load" hx-swap="none"
+     style="display:none;"></div>

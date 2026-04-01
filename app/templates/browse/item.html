@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}{{ item.title }} – CleanArr{% endblock %}
+{% block content %}
+<div class="item-detail">
+  {% if item.type == "episode" %}
+  <nav class="breadcrumbs">
+    <a href="/browse/item/{{ item.grandparentRatingKey }}">{{ item.grandparentTitle }}</a>
+    <span class="bc-sep">/</span>
+    <a href="/browse/item/{{ item.parentRatingKey }}">Season {{ item.parentIndex }}</a>
+    <span class="bc-sep">/</span>
+    <span>{{ item.title }}</span>
+  </nav>
+  {% elif item.type == "season" %}
+  <nav class="breadcrumbs">
+    <a href="/browse/item/{{ item.parentRatingKey }}">{{ item.parentTitle }}</a>
+    <span class="bc-sep">/</span>
+    <span>Season {{ item.index }}</span>
+  </nav>
+  {% endif %}
+  <div class="item-meta">
+    <h1>
+      {{ item.title }} {% if item.year %}<span class="year">({{ item.year }})</span>{% endif %}
+      {% if has_clean %}<span class="badge badge-completed" style="font-size:0.7rem;vertical-align:middle;">✓ Clean version exists</span>{% endif %}
+    </h1>
+    <p class="summary">{{ item.summary or "" }}</p>
+    {% if item.type == "show" %}
+    <p><strong>{{ item.childCount or 0 }} seasons</strong> · {{ item.leafCount or 0 }} episodes</p>
+    {% elif item.type == "season" %}
+    <p><strong>Season {{ item.index }}</strong> · {{ item.leafCount or 0 }} episodes</p>
+    {% endif %}
+  </div>
+
+  {% if item.type in ("movie", "episode", "show", "season") %}
+  <div hx-get="/browse/item/{{ plex_key }}/parental-guide"
+       hx-trigger="load" hx-swap="innerHTML">
+    <p class="muted">Loading parental guide...</p>
+  </div>
+  {% endif %}
+
+  {% if children %}
+  <div class="children">
+    <h2>{% if item.type == "show" %}Seasons{% else %}Episodes{% endif %}</h2>
+    <ul>
+      {% for child in children %}
+      <li>
+        <a href="/browse/item/{{ child.ratingKey }}">
+          {% if item.type == "season" %}
+            <span class="ep-num">S{{ "%02d"|format(item.index|int) }}E{{ "%02d"|format(child.index|int) }}</span>
+          {% endif %}
+          {{ child.title }}
+        </a>
+        {% if child.ratingKey | string in child_cleaned %}
+          <span class="badge badge-completed badge-xs">✓ Clean</span>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {% include "browse/_job_progress.html" %}
+
+  {% if content_report %}
+  <div class="content-report">
+    <h2>Content Removed</h2>
+    <table class="data-table">
+      <thead><tr><th>Time</th><th>Type</th><th>Content</th></tr></thead>
+      <tbody>
+        {% for entry in content_report %}
+        <tr>
+          <td class="report-time">{{ entry.time }}</td>
+          <td><span class="badge badge-{{ entry.type }}">{{ entry.type }}</span></td>
+          <td>{{ entry.description }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <div class="request-form" id="request-section">
+    <h2>Request Clean Version</h2>
+    {% if has_clean %}
+    <div class="alert alert-warn">A clean version already exists. Submitting will queue a new job and overwrite it.</div>
+    {% endif %}
+
+    {# Step 1: Button loads the form shell (disabled + spinners) #}
+    <button type="button" class="btn btn-primary" id="begin-request-btn"
+            hx-get="/browse/item/{{ plex_key }}/request-form"
+            hx-target="#request-form-area"
+            hx-swap="innerHTML">
+      Configure Clean Version
+    </button>
+
+    {# Step 2: Form appears here, AI runs in background, then enables controls #}
+    <div id="request-form-area"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  window._aiRec = {profanity: null, nudity: null, ready: false};
+
+  // Hide the configure button once clicked
+  var beginBtn = document.getElementById('begin-request-btn');
+  beginBtn.addEventListener('click', function() {
+    this.style.display = 'none';
+  });
+
+  // Watch for the form to appear, then attach submit override warnings
+  var observer = new MutationObserver(function() {
+    var form = document.getElementById('clean-form');
+    if (!form) return;
+    observer.disconnect();
+
+    form.addEventListener('submit', function(e) {
+      var warnings = [];
+      var profCb = form.querySelector('[name="filter_profanity"]');
+      var nudCb = form.querySelector('[name="filter_nudity"]');
+
+      if (window._aiRec.ready) {
+        if (window._aiRec.profanity === false && profCb && profCb.checked) {
+          warnings.push('You are overriding the AI recommendation: AI does not think this title needs profanity filtering.');
+        }
+        if (window._aiRec.profanity === true && profCb && !profCb.checked) {
+          warnings.push('You are overriding the AI recommendation: AI recommends profanity filtering for this title.');
+        }
+        if (window._aiRec.nudity === false && nudCb && nudCb.checked) {
+          warnings.push('You are overriding the AI recommendation: AI does not think this title needs nudity filtering.');
+        }
+        if (window._aiRec.nudity === true && nudCb && !nudCb.checked) {
+          warnings.push('You are overriding the AI recommendation: AI recommends nudity filtering for this title.');
+        }
+      }
+
+      {% if has_clean %}
+      warnings.push('A clean version already exists and will be overwritten.');
+      {% endif %}
+
+      if (warnings.length > 0) {
+        if (!confirm(warnings.join('\n\n') + '\n\nProceed anyway?')) {
+          e.preventDefault();
+        }
+      }
+    });
+  });
+  observer.observe(document.getElementById('request-form-area'), {childList: true, subtree: true});
+})();
+</script>
+{% endblock %}

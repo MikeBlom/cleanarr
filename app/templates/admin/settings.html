@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+{% block title %}Settings – Admin – CleanArr{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+{% if saved %}<div class="alert alert-success">Settings saved.</div>{% endif %}
+
+<form method="post" action="/admin/settings">
+
+  <fieldset>
+    <legend>Plex Connection</legend>
+    <label class="field">
+      <span class="field-label">Server URL</span>
+      <input type="text" name="plex_server_url" value="{{ s.plex_server_url }}" class="select-input" placeholder="http://localhost:32400">
+    </label>
+    <label class="field">
+      <span class="field-label">Admin Token</span>
+      <input type="password" name="plex_admin_token" value="{{ s.plex_admin_token }}" class="select-input" autocomplete="off">
+    </label>
+    <label class="field">
+      <span class="field-label">Client ID</span>
+      <input type="text" name="plex_client_id" value="{{ s.plex_client_id }}" class="select-input">
+    </label>
+    <label class="field">
+      <span class="field-label">Admin Plex User IDs</span>
+      <input type="text" name="plex_admin_plex_ids" value="{{ s.plex_admin_plex_ids }}" class="select-input" placeholder="comma-separated">
+      <span class="field-hint">Plex user IDs that are auto-admin on first login</span>
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Path Mapping</legend>
+    <label class="field">
+      <span class="field-label">Plex path prefix (from)</span>
+      <input type="text" name="plex_path_prefix_from" value="{{ s.plex_path_prefix_from }}" class="select-input" placeholder="Leave empty if paths match">
+    </label>
+    <label class="field">
+      <span class="field-label">Container path prefix (to)</span>
+      <input type="text" name="plex_path_prefix_to" value="{{ s.plex_path_prefix_to }}" class="select-input">
+    </label>
+    <label class="field">
+      <span class="field-label">Allowed media directories</span>
+      <input type="text" name="allowed_media_dirs" value="{{ s.allowed_media_dirs }}" class="select-input" placeholder="/media/movies,/media/tv">
+      <span class="field-hint">Comma-separated paths the worker is allowed to access</span>
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Worker</legend>
+    <label class="field">
+      <span class="field-label">cleanmedia binary path</span>
+      <input type="text" name="cleanmedia_bin" value="{{ s.cleanmedia_bin }}" class="select-input">
+    </label>
+    <label class="field">
+      <span class="field-label">Whisper model</span>
+      <select name="whisper_model" class="select-input">
+        {% for m in ["tiny", "base", "small", "medium", "large"] %}
+        <option value="{{ m }}" {% if s.whisper_model == m %}selected{% endif %}>{{ m }}{% if m == "tiny" %} (fastest){% elif m == "large" %} (most accurate, slowest){% endif %}</option>
+        {% endfor %}
+      </select>
+      <span class="field-hint">Larger models are more accurate but much slower on CPU</span>
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Profanity Detection</legend>
+    <label class="field">
+      <span class="field-label">Words (one per line)</span>
+      <textarea name="profanity_words" class="select-input textarea-tall" spellcheck="false">{{ words }}</textarea>
+    </label>
+    <label class="field">
+      <span class="field-label">Phrases (one per line)</span>
+      <textarea name="profanity_phrases" class="select-input textarea-med" spellcheck="false">{{ phrases }}</textarea>
+    </label>
+    <label class="field">
+      <span class="field-label">Audio padding (ms)</span>
+      <input type="number" name="profanity_padding_ms" value="{{ s.profanity_padding_ms }}" class="select-input input-narrow" min="0" max="2000">
+      <span class="field-hint">Extra silence around each muted word</span>
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Nudity Detection</legend>
+    <label class="field">
+      <span class="field-label">Confidence threshold</span>
+      <input type="number" name="nudity_confidence" value="{{ s.nudity_confidence }}" class="select-input input-narrow" min="0" max="1" step="0.05">
+      <span class="field-hint">Higher = fewer false positives (0.7 recommended)</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Sample FPS</span>
+      <input type="number" name="nudity_sample_fps" value="{{ s.nudity_sample_fps }}" class="select-input input-narrow" min="0.5" max="10" step="0.5">
+      <span class="field-hint">Frames per second to scan (higher = slower but more thorough)</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Video padding (ms)</span>
+      <input type="number" name="nudity_padding_ms" value="{{ s.nudity_padding_ms }}" class="select-input input-narrow" min="0" max="5000">
+    </label>
+    <label class="field">
+      <span class="field-label">Scene merge gap (ms)</span>
+      <input type="number" name="nudity_scene_merge_gap_ms" value="{{ s.nudity_scene_merge_gap_ms }}" class="select-input input-narrow" min="0" max="30000" step="500">
+      <span class="field-hint">Bridge detections within this gap into one continuous blackout (5000 = 5s recommended)</span>
+    </label>
+    <div class="field">
+      <span class="field-label">Categories to detect</span>
+      <div class="checkbox-group">
+        {% set all_cats = [
+          ("FEMALE_BREAST_EXPOSED", "Female breast exposed"),
+          ("FEMALE_GENITALIA_EXPOSED", "Female genitalia exposed"),
+          ("MALE_GENITALIA_EXPOSED", "Male genitalia exposed"),
+          ("ANUS_EXPOSED", "Anus exposed"),
+          ("BUTTOCKS_EXPOSED", "Buttocks exposed"),
+        ] %}
+        {% for cat_id, cat_label in all_cats %}
+        <label><input type="checkbox" name="nudity_categories" value="{{ cat_id }}" {% if cat_id in categories %}checked{% endif %}> {{ cat_label }}</label>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="field">
+      <span class="field-label">Detectors</span>
+      <div class="checkbox-group">
+        {% set all_dets = [("nudenet", "NudeNet (body-part localization)"), ("vit_nsfw", "ViT NSFW (image classification)")] %}
+        {% set enabled_dets = s.nudity_detectors | from_json if s.nudity_detectors else ["nudenet"] %}
+        {% for det_id, det_label in all_dets %}
+        <label><input type="checkbox" name="nudity_detectors" value="{{ det_id }}" {% if det_id in enabled_dets %}checked{% endif %}> {{ det_label }}</label>
+        {% endfor %}
+      </div>
+      <span class="field-hint">Select which detection models to run. Multiple models vote together via the ensemble strategy.</span>
+    </div>
+    <label class="field">
+      <span class="field-label">Ensemble strategy</span>
+      <select name="nudity_ensemble_strategy" class="select-input">
+        {% for val, lbl in [("weighted_average", "Weighted average"), ("unanimous", "Unanimous"), ("any", "Any detector")] %}
+        <option value="{{ val }}" {% if s.nudity_ensemble_strategy == val %}selected{% endif %}>{{ lbl }}</option>
+        {% endfor %}
+      </select>
+      <span class="field-hint">How multiple detectors' scores are combined</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Frame extraction mode</span>
+      <select name="nudity_extraction_mode" class="select-input">
+        {% for val, lbl in [("fixed_fps", "Fixed FPS"), ("keyframe", "Keyframe (scene change)"), ("auto", "Auto (keyframe for long videos)")] %}
+        <option value="{{ val }}" {% if s.nudity_extraction_mode == val %}selected{% endif %}>{{ lbl }}</option>
+        {% endfor %}
+      </select>
+      <span class="field-hint">Keyframe mode extracts fewer frames by detecting scene changes</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Temporal consistency filter</span>
+      <input type="checkbox" name="nudity_temporal_enabled" value="true" {% if s.nudity_temporal_enabled == "true" %}checked{% endif %}>
+      <span class="field-hint">Suppress isolated single-frame false positives using a sliding window</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Temporal window size</span>
+      <input type="number" name="nudity_temporal_window" value="{{ s.nudity_temporal_window }}" class="select-input input-narrow" min="3" max="15" step="2">
+      <span class="field-hint">Number of frames in sliding window (odd recommended)</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Temporal min flagged</span>
+      <input type="number" name="nudity_temporal_min_flagged" value="{{ s.nudity_temporal_min_flagged }}" class="select-input input-narrow" min="1" max="15">
+      <span class="field-hint">Minimum flagged frames in window to keep a detection</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Device</span>
+      <select name="nudity_device" class="select-input">
+        {% for val, lbl in [("auto", "Auto"), ("cpu", "CPU"), ("cuda", "CUDA (GPU)")] %}
+        <option value="{{ val }}" {% if s.nudity_device == val %}selected{% endif %}>{{ lbl }}</option>
+        {% endfor %}
+      </select>
+      <span class="field-hint">Device for ML models (auto will use GPU if available)</span>
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Violence/Gore Detection</legend>
+    <label class="field">
+      <span class="field-label">Confidence threshold</span>
+      <input type="number" name="violence_confidence" value="{{ s.violence_confidence }}" class="select-input input-narrow" min="0" max="1" step="0.05">
+      <span class="field-hint">Higher = fewer false positives (0.5 recommended)</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Sample FPS</span>
+      <input type="number" name="violence_sample_fps" value="{{ s.violence_sample_fps }}" class="select-input input-narrow" min="0.5" max="10" step="0.5">
+    </label>
+    <label class="field">
+      <span class="field-label">Video padding (ms)</span>
+      <input type="number" name="violence_padding_ms" value="{{ s.violence_padding_ms }}" class="select-input input-narrow" min="0" max="5000">
+    </label>
+    <label class="field">
+      <span class="field-label">Scene merge gap (ms)</span>
+      <input type="number" name="violence_scene_merge_gap_ms" value="{{ s.violence_scene_merge_gap_ms }}" class="select-input input-narrow" min="0" max="30000" step="500">
+    </label>
+    <div class="field">
+      <span class="field-label">Categories to detect</span>
+      <div class="checkbox-group">
+        {% set all_viol_cats = [
+          ("GORE_BLOODSHED", "Gore / bloodshed"),
+          ("VIOLENCE_FIGHTING", "Violence / fighting"),
+        ] %}
+        {% for cat_id, cat_label in all_viol_cats %}
+        <label><input type="checkbox" name="violence_categories" value="{{ cat_id }}" {% if cat_id in violence_categories %}checked{% endif %}> {{ cat_label }}</label>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="field">
+      <span class="field-label">Detectors</span>
+      <div class="checkbox-group">
+        {% set all_viol_dets = [("siglip_violence", "SigLIP Violence (multi-label)"), ("vit_violence", "ViT Violence (binary)")] %}
+        {% set enabled_viol_dets = s.violence_detectors | from_json if s.violence_detectors else ["siglip_violence"] %}
+        {% for det_id, det_label in all_viol_dets %}
+        <label><input type="checkbox" name="violence_detectors" value="{{ det_id }}" {% if det_id in enabled_viol_dets %}checked{% endif %}> {{ det_label }}</label>
+        {% endfor %}
+      </div>
+    </div>
+    <label class="field">
+      <span class="field-label">Ensemble strategy</span>
+      <select name="violence_ensemble_strategy" class="select-input">
+        {% for val, lbl in [("weighted_average", "Weighted average"), ("unanimous", "Unanimous"), ("any", "Any detector")] %}
+        <option value="{{ val }}" {% if s.violence_ensemble_strategy == val %}selected{% endif %}>{{ lbl }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field">
+      <span class="field-label">Frame extraction mode</span>
+      <select name="violence_extraction_mode" class="select-input">
+        {% for val, lbl in [("fixed_fps", "Fixed FPS"), ("keyframe", "Keyframe (scene change)"), ("auto", "Auto")] %}
+        <option value="{{ val }}" {% if s.violence_extraction_mode == val %}selected{% endif %}>{{ lbl }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field">
+      <span class="field-label">Temporal consistency filter</span>
+      <input type="checkbox" name="violence_temporal_enabled" value="true" {% if s.violence_temporal_enabled == "true" %}checked{% endif %}>
+    </label>
+    <label class="field">
+      <span class="field-label">Temporal window size</span>
+      <input type="number" name="violence_temporal_window" value="{{ s.violence_temporal_window }}" class="select-input input-narrow" min="3" max="15" step="2">
+    </label>
+    <label class="field">
+      <span class="field-label">Temporal min flagged</span>
+      <input type="number" name="violence_temporal_min_flagged" value="{{ s.violence_temporal_min_flagged }}" class="select-input input-narrow" min="1" max="15">
+    </label>
+    <label class="field">
+      <span class="field-label">Device</span>
+      <select name="violence_device" class="select-input">
+        {% for val, lbl in [("auto", "Auto"), ("cpu", "CPU"), ("cuda", "CUDA (GPU)")] %}
+        <option value="{{ val }}" {% if s.violence_device == val %}selected{% endif %}>{{ lbl }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <legend>AI Content Advisor (Ollama)</legend>
+    <label class="field">
+      <span class="field-label">Enable AI advisor</span>
+      <input type="checkbox" name="ai_advisor_enabled" value="true" {% if s.ai_advisor_enabled == "true" %}checked{% endif %}>
+      <span class="field-hint">Use a local LLM to evaluate IMDB data and auto-set filter defaults</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Ollama URL</span>
+      <input type="text" name="ollama_url" value="{{ s.ollama_url }}" class="select-input" placeholder="http://localhost:11434">
+    </label>
+    <label class="field">
+      <span class="field-label">Ollama Model</span>
+      <input type="text" name="ollama_model" value="{{ s.ollama_model }}" class="select-input" placeholder="llama3.2">
+      <span class="field-hint">Model must be pulled in Ollama first (e.g. ollama pull llama3.2)</span>
+    </label>
+  </fieldset>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Save Settings</button>
+  </div>
+</form>
+{% endblock %}

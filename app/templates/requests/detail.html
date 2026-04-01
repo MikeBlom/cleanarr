@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% block title %}{{ conv_request.title }} – CleanArr{% endblock %}
+{% block content %}
+<h1>{{ conv_request.title }}</h1>
+<div class="meta-row">
+  <span class="badge badge-{{ conv_request.status.value }}">{{ conv_request.status.value }}</span>
+  <span>{{ conv_request.request_type.value }}</span>
+  <span>Requested by <strong>{{ conv_request.user.username if conv_request.user else "unknown" }}</strong></span>
+  <span>{{ conv_request.created_at.strftime("%Y-%m-%d %H:%M") }}</span>
+</div>
+
+<div class="filters">
+  {% if conv_request.filter_profanity %}<span class="tag">Profanity</span>{% endif %}
+  {% if conv_request.filter_nudity %}<span class="tag">Nudity</span>{% endif %}
+  {% if conv_request.use_bleep %}<span class="tag">Bleep</span>{% endif %}
+  {% if conv_request.use_whisper %}<span class="tag">Whisper</span>{% endif %}
+  {% if conv_request.audio_stream_index is not none %}<span class="tag">Audio track #{{ conv_request.audio_stream_index }}</span>{% endif %}
+  {% if conv_request.profanity_extra_words_json %}<span class="tag">+{{ (conv_request.profanity_extra_words_json | from_json) | length }} extra words</span>{% endif %}
+  {% if conv_request.profanity_extra_phrases_json %}<span class="tag">+{{ (conv_request.profanity_extra_phrases_json | from_json) | length }} extra phrases</span>{% endif %}
+  {% if conv_request.profanity_padding_ms is not none %}<span class="tag">Prof. padding: {{ conv_request.profanity_padding_ms }}ms</span>{% endif %}
+  {% if conv_request.whisper_model %}<span class="tag">Whisper: {{ conv_request.whisper_model }}</span>{% endif %}
+  {% if conv_request.nudity_confidence is not none %}<span class="tag">Confidence: {{ conv_request.nudity_confidence }}</span>{% endif %}
+  {% if conv_request.nudity_sample_fps is not none %}<span class="tag">FPS: {{ conv_request.nudity_sample_fps }}</span>{% endif %}
+  {% if conv_request.nudity_padding_ms is not none %}<span class="tag">Padding: {{ conv_request.nudity_padding_ms }}ms</span>{% endif %}
+  {% if conv_request.nudity_scene_merge_gap_ms is not none %}<span class="tag">Scene gap: {{ conv_request.nudity_scene_merge_gap_ms }}ms</span>{% endif %}
+  {% if conv_request.nudity_detectors_json %}<span class="tag">Detectors: {{ (conv_request.nudity_detectors_json | from_json) | join(", ") }}</span>{% endif %}
+  {% if conv_request.nudity_ensemble_strategy %}<span class="tag">Ensemble: {{ conv_request.nudity_ensemble_strategy }}</span>{% endif %}
+  {% if conv_request.nudity_temporal_enabled %}<span class="tag">Temporal filter</span>{% endif %}
+  {% if conv_request.nudity_extraction_mode %}<span class="tag">Extraction: {{ conv_request.nudity_extraction_mode }}</span>{% endif %}
+</div>
+
+<div class="request-actions">
+  {% set has_running = conv_request.jobs | selectattr("status.value", "equalto", "running") | list | length > 0 %}
+  {% set has_failed = conv_request.jobs | selectattr("status.value", "in", ["failed", "skipped"]) | list | length > 0 %}
+  {% set no_jobs = conv_request.jobs | length == 0 %}
+
+  {% if not has_running %}
+  <form method="post" action="/requests/{{ conv_request.id }}/retry" style="display:inline">
+    <button class="btn btn-primary btn-sm" type="submit">↺ Retry / Re-queue</button>
+  </form>
+  {% endif %}
+
+  <button class="btn btn-sm" onclick="document.getElementById('edit-form').classList.toggle('hidden')">✎ Edit Options</button>
+
+  {% if not has_running %}
+  <button class="btn btn-sm btn-danger" onclick="document.getElementById('delete-confirm').classList.toggle('hidden')">✕ Delete</button>
+  {% endif %}
+</div>
+
+<div id="edit-form" class="edit-box hidden">
+  <form method="post" action="/requests/{{ conv_request.id }}/edit">
+    <h3>Edit Filter Options</h3>
+    <label><input type="checkbox" name="filter_profanity" value="true" {% if conv_request.filter_profanity %}checked{% endif %}> Filter profanity</label>
+    <label><input type="checkbox" name="filter_nudity" value="true" {% if conv_request.filter_nudity %}checked{% endif %}> Filter nudity</label>
+    <label><input type="checkbox" name="use_bleep" value="true" {% if conv_request.use_bleep %}checked{% endif %}> Use bleep sound</label>
+    <label><input type="checkbox" name="use_whisper" value="true" {% if conv_request.use_whisper %}checked{% endif %}> Use Whisper AI</label>
+
+    {% set has_prof_overrides = conv_request.profanity_padding_ms is not none or conv_request.profanity_extra_words_json is not none %}
+    <div style="margin-top:0.75rem;">
+      <label>
+        <input type="checkbox" id="edit-profanity-override-toggle" {% if has_prof_overrides %}checked{% endif %}
+               onchange="var f=document.getElementById('edit-profanity-override-fields');f.classList.toggle('hidden',!this.checked);f.querySelectorAll('input,select,textarea').forEach(function(i){i.disabled=!this.checked}.bind(this))">
+        Override profanity detection settings
+      </label>
+    </div>
+    <div id="edit-profanity-override-fields" class="{% if not has_prof_overrides %}hidden{% endif %}" style="margin-top:0.5rem;">
+      <label class="field">
+        <span class="field-label">Extra words to filter (one per line)</span>
+        <textarea name="profanity_extra_words" class="select-input textarea-med" spellcheck="false" {% if not has_prof_overrides %}disabled{% endif %}>{% if conv_request.profanity_extra_words_json %}{{ (conv_request.profanity_extra_words_json | from_json) | join('\n') }}{% endif %}</textarea>
+        <span class="field-hint">Added to the global list, not replacing it</span>
+      </label>
+      <label class="field">
+        <span class="field-label">Extra phrases to filter (one per line)</span>
+        <textarea name="profanity_extra_phrases" class="select-input textarea-med" spellcheck="false" {% if not has_prof_overrides %}disabled{% endif %}>{% if conv_request.profanity_extra_phrases_json %}{{ (conv_request.profanity_extra_phrases_json | from_json) | join('\n') }}{% endif %}</textarea>
+      </label>
+      <label class="field">
+        <span class="field-label">Audio padding (ms)</span>
+        <input type="number" name="profanity_padding_ms" value="{{ conv_request.profanity_padding_ms if conv_request.profanity_padding_ms is not none else profanity_defaults.profanity_padding_ms }}" class="select-input input-narrow" min="0" max="2000" {% if not has_prof_overrides %}disabled{% endif %}>
+      </label>
+      <label class="field">
+        <span class="field-label">Whisper model</span>
+        {% set active_whisper = conv_request.whisper_model or profanity_defaults.whisper_model %}
+        <select name="whisper_model_override" class="select-input" {% if not has_prof_overrides %}disabled{% endif %}>
+          {% for m in ["tiny", "base", "small", "medium", "large"] %}
+          <option value="{{ m }}" {% if active_whisper == m %}selected{% endif %}>{{ m }}{% if m == "tiny" %} (fastest){% elif m == "large" %} (most accurate, slowest){% endif %}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+
+    {% set has_overrides = conv_request.nudity_confidence is not none %}
+    <div style="margin-top:0.75rem;">
+      <label>
+        <input type="checkbox" id="edit-nudity-override-toggle" {% if has_overrides %}checked{% endif %}
+               onchange="var f=document.getElementById('edit-nudity-override-fields');f.classList.toggle('hidden',!this.checked);f.querySelectorAll('input,select').forEach(function(i){i.disabled=!this.checked}.bind(this))">
+        Override nudity detection settings
+      </label>
+    </div>
+    <div id="edit-nudity-override-fields" class="{% if not has_overrides %}hidden{% endif %}" style="margin-top:0.5rem;">
+      <label class="field">
+        <span class="field-label">Confidence threshold</span>
+        <input type="number" name="nudity_confidence" value="{{ conv_request.nudity_confidence if conv_request.nudity_confidence is not none else nudity_defaults.nudity_confidence }}" class="select-input input-narrow" min="0" max="1" step="0.05" {% if not has_overrides %}disabled{% endif %}>
+      </label>
+      <label class="field">
+        <span class="field-label">Sample FPS</span>
+        <input type="number" name="nudity_sample_fps" value="{{ conv_request.nudity_sample_fps if conv_request.nudity_sample_fps is not none else nudity_defaults.nudity_sample_fps }}" class="select-input input-narrow" min="0.5" max="10" step="0.5" {% if not has_overrides %}disabled{% endif %}>
+      </label>
+      <label class="field">
+        <span class="field-label">Video padding (ms)</span>
+        <input type="number" name="nudity_padding_ms" value="{{ conv_request.nudity_padding_ms if conv_request.nudity_padding_ms is not none else nudity_defaults.nudity_padding_ms }}" class="select-input input-narrow" min="0" max="5000" {% if not has_overrides %}disabled{% endif %}>
+      </label>
+      <label class="field">
+        <span class="field-label">Scene merge gap (ms)</span>
+        <input type="number" name="nudity_scene_merge_gap_ms" value="{{ conv_request.nudity_scene_merge_gap_ms if conv_request.nudity_scene_merge_gap_ms is not none else nudity_defaults.nudity_scene_merge_gap_ms }}" class="select-input input-narrow" min="0" max="30000" step="500" {% if not has_overrides %}disabled{% endif %}>
+      </label>
+      <div class="field">
+        <span class="field-label">Categories</span>
+        <div class="checkbox-group">
+          {% set all_cats = [
+            ("FEMALE_BREAST_EXPOSED", "Female breast exposed"),
+            ("FEMALE_GENITALIA_EXPOSED", "Female genitalia exposed"),
+            ("MALE_GENITALIA_EXPOSED", "Male genitalia exposed"),
+            ("ANUS_EXPOSED", "Anus exposed"),
+            ("BUTTOCKS_EXPOSED", "Buttocks exposed"),
+          ] %}
+          {% set enabled_cats = (conv_request.nudity_categories_json | from_json) if conv_request.nudity_categories_json else (nudity_defaults.nudity_categories | from_json) %}
+          {% for value, label in all_cats %}
+          <label>
+            <input type="checkbox" name="nudity_category" value="{{ value }}" {% if value in enabled_cats %}checked{% endif %} {% if not has_overrides %}disabled{% endif %}>
+            {{ label }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="field">
+        <span class="field-label">Detectors</span>
+        <div class="checkbox-group">
+          {% set all_dets = [("nudenet", "NudeNet"), ("vit_nsfw", "ViT NSFW")] %}
+          {% set enabled_dets = (conv_request.nudity_detectors_json | from_json) if conv_request.nudity_detectors_json else (nudity_defaults.nudity_detectors | from_json) %}
+          {% for det_id, det_label in all_dets %}
+          <label>
+            <input type="checkbox" name="nudity_detector" value="{{ det_id }}" {% if det_id in enabled_dets %}checked{% endif %} {% if not has_overrides %}disabled{% endif %}>
+            {{ det_label }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <label class="field">
+        <span class="field-label">Ensemble strategy</span>
+        {% set active_strategy = conv_request.nudity_ensemble_strategy or nudity_defaults.nudity_ensemble_strategy %}
+        <select name="nudity_ensemble_strategy" class="select-input" {% if not has_overrides %}disabled{% endif %}>
+          {% for val, lbl in [("weighted_average", "Weighted average"), ("unanimous", "Unanimous"), ("any", "Any detector")] %}
+          <option value="{{ val }}" {% if active_strategy == val %}selected{% endif %}>{{ lbl }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="field">
+        <span class="field-label">Frame extraction mode</span>
+        {% set active_em = conv_request.nudity_extraction_mode or nudity_defaults.nudity_extraction_mode %}
+        <select name="nudity_extraction_mode" class="select-input" {% if not has_overrides %}disabled{% endif %}>
+          {% for val, lbl in [("fixed_fps", "Fixed FPS"), ("keyframe", "Keyframe"), ("auto", "Auto")] %}
+          <option value="{{ val }}" {% if active_em == val %}selected{% endif %}>{{ lbl }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="field">
+        <input type="checkbox" name="nudity_temporal_enabled" value="true" {% if conv_request.nudity_temporal_enabled or (conv_request.nudity_temporal_enabled is none and nudity_defaults.nudity_temporal_enabled == "true") %}checked{% endif %} {% if not has_overrides %}disabled{% endif %}>
+        Enable temporal consistency filter
+      </label>
+      <label class="field">
+        <span class="field-label">Temporal window</span>
+        <input type="number" name="nudity_temporal_window" value="{{ conv_request.nudity_temporal_window if conv_request.nudity_temporal_window is not none else nudity_defaults.nudity_temporal_window }}" class="select-input input-narrow" min="3" max="15" step="2" {% if not has_overrides %}disabled{% endif %}>
+      </label>
+      <label class="field">
+        <span class="field-label">Temporal min flagged</span>
+        <input type="number" name="nudity_temporal_min_flagged" value="{{ conv_request.nudity_temporal_min_flagged if conv_request.nudity_temporal_min_flagged is not none else nudity_defaults.nudity_temporal_min_flagged }}" class="select-input input-narrow" min="1" max="15" {% if not has_overrides %}disabled{% endif %}>
+      </label>
+    </div>
+
+    <div class="edit-box-actions">
+      <button class="btn btn-primary btn-sm" type="submit">Save &amp; Re-queue failed jobs</button>
+      <button class="btn btn-sm" type="button" onclick="document.getElementById('edit-form').classList.add('hidden')">Cancel</button>
+    </div>
+  </form>
+</div>
+
+<div id="delete-confirm" class="edit-box hidden">
+  <form method="post" action="/requests/{{ conv_request.id }}/delete">
+    <h3>Delete Request</h3>
+    <p style="margin-bottom:0.75rem;">This will remove the request and all its jobs from the database.</p>
+    <label><input type="checkbox" name="delete_files" value="true" checked> Also delete clean edition files and restore original filenames</label>
+    <div class="edit-box-actions">
+      <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+      <button class="btn btn-sm" type="button" onclick="document.getElementById('delete-confirm').classList.add('hidden')">Cancel</button>
+    </div>
+  </form>
+</div>
+
+{% include "requests/_jobs_table.html" %}
+{% endblock %}

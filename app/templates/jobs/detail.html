@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Job {{ job.id }} – CleanArr{% endblock %}
+{% block content %}
+<h1>Job: {{ job.title }}</h1>
+<div class="meta-row">
+  <span class="badge badge-{{ job.status.value }}" id="job-status">{{ job.status.value }}</span>
+  {% if job.started_at %}<span>Started: {{ job.started_at.strftime("%Y-%m-%d %H:%M:%S") }}</span>{% endif %}
+  {% if job.finished_at %}<span>Finished: {{ job.finished_at.strftime("%Y-%m-%d %H:%M:%S") }}</span>{% endif %}
+</div>
+
+<div class="job-paths">
+  <div><strong>Input:</strong> <code>{{ job.input_file }}</code></div>
+  {% if job.output_file %}<div><strong>Output:</strong> <code>{{ job.output_file }}</code></div>{% endif %}
+  {% if job.error_message %}<div class="alert alert-error"><strong>Error:</strong> {{ job.error_message }}</div>{% endif %}
+</div>
+
+
+<div class="request-actions">
+  {% if job.status.value == "running" and user.is_admin %}
+  <form method="post" action="/admin/jobs/{{ job.id }}/cancel" style="display:inline"
+        onsubmit="return confirm('Cancel this running job?')">
+    <button class="btn btn-danger btn-sm" type="submit">Cancel Job</button>
+  </form>
+  {% endif %}
+  {% if job.status.value in ("failed", "skipped") %}
+  <form method="post" action="/jobs/{{ job.id }}/retry" style="display:inline">
+    <button class="btn btn-primary btn-sm" type="submit">↺ Retry{% if has_sidecar %} (resume from checkpoint){% endif %}</button>
+  </form>
+  {% endif %}
+</div>
+
+<h2>Progress</h2>
+<div id="progress-box"
+     hx-get="/jobs/{{ job.id }}/progress"
+     hx-trigger="load, every 2s [document.querySelector('[data-job-status]')?.dataset.jobStatus === 'running']"
+     hx-swap="innerHTML">
+  {% include "jobs/_progress.html" %}
+</div>
+
+{% if content_report %}
+<h2>Content Removed</h2>
+<table class="data-table">
+  <thead><tr><th>Time</th><th>Type</th><th>Content</th></tr></thead>
+  <tbody>
+    {% for entry in content_report %}
+    <tr>
+      <td class="report-time">{{ entry.time }}</td>
+      <td><span class="badge badge-{{ entry.type }}">{{ entry.type }}</span></td>
+      <td>{{ entry.description }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<h2>Log Output</h2>
+<div id="log-box"
+     hx-get="/jobs/{{ job.id }}/log"
+     hx-trigger="every 3s [document.querySelector('#log-content')?.dataset.status === 'running']"
+     hx-swap="innerHTML"
+     hx-on::before-swap="window._logAtBottom=(function(){var p=document.getElementById('log-content');return !p||(p.scrollHeight-p.scrollTop-p.clientHeight)<30;})()"
+     hx-on::after-swap="var pre=document.getElementById('log-content');if(pre&&window._logAtBottom)pre.scrollTop=pre.scrollHeight;">
+  <pre id="log-content" data-status="{{ job.status.value }}" style="max-height:400px;overflow-y:auto;">{{ job.log_output or "(no output yet)" }}</pre>
+</div>
+<script>
+  (function(){ var pre=document.getElementById('log-content'); if(pre) pre.scrollTop=pre.scrollHeight; })();
+</script>
+
+<p><a href="/requests/{{ job.request_id }}">← Back to request</a></p>
+{% endblock %}

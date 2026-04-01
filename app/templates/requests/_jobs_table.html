@@ -1,0 +1,39 @@
+<div id="jobs-section"
+     data-active="{{ 'true' if has_active else 'false' }}"
+     {% if has_active %}
+     hx-get="/requests/{{ conv_request.id }}/jobs-status"
+     hx-trigger="every 2s [this.dataset.active === 'true']"
+     hx-swap="outerHTML"
+     {% endif %}>
+  <h2>Jobs ({{ jobs | length }})</h2>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th>Status</th>
+        <th>Input</th>
+        <th>Output</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for job in jobs %}
+      <tr>
+        <td>{{ job.title }}</td>
+        <td><span class="badge badge-{{ job.status.value }}">{{ job.status.value }}</span></td>
+        <td class="path">{{ job.input_file }}</td>
+        <td class="path">{{ job.output_file or "—" }}</td>
+        <td><a href="/jobs/{{ job.id }}">Log →</a></td>
+      </tr>
+      {% if job.id in jobs_progress %}
+      <tr>
+        <td colspan="5" style="padding-top:0; border-top:none;">
+          {% set progress = jobs_progress[job.id] %}
+          {% include "jobs/_progress.html" %}
+        </td>
+      </tr>
+      {% endif %}
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Browse Libraries – CleanArr{% endblock %}
+{% block content %}
+<h1>Libraries</h1>
+{% if error %}
+<div class="alert alert-error">Could not connect to Plex: {{ error }}</div>
+{% endif %}
+<div class="card-grid">
+  {% for lib in libraries %}
+  <a href="/browse/section/{{ lib.key }}" class="card">
+    <h2>{{ lib.title }}</h2>
+    <p>{{ lib.type | capitalize }}</p>
+  </a>
+  {% else %}
+  <p>No libraries found.</p>
+  {% endfor %}
+</div>
+{% endblock %}
