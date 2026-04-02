@@ -27,6 +27,12 @@ class _FlashTemplates(Jinja2Templates):
 templates = _FlashTemplates(directory=str(Path(__file__).parent / "templates"))
 templates.env.filters["from_json"] = json.loads
 
+def _timestamp_date(ts: int | str) -> str:
+    from datetime import datetime, timezone
+    return datetime.fromtimestamp(int(ts), tz=timezone.utc).strftime("%Y-%m-%d")
+
+templates.env.filters["timestamp_date"] = _timestamp_date
+
 # Cache-busting hash for static CSS
 _css_path = Path(__file__).parent / "static" / "style.css"
 _css_hash = hashlib.md5(_css_path.read_bytes()).hexdigest()[:8]

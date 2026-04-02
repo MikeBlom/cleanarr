@@ -35,11 +35,11 @@ class PlexClient:
         data = self._get("/library/sections")
         return data.get("MediaContainer", {}).get("Directory", [])
 
-    def library_items(self, section_id: str, offset: int = 0, limit: int = 50) -> dict:
-        data = self._get(
-            f"/library/sections/{section_id}/all",
-            params={"X-Plex-Container-Start": offset, "X-Plex-Container-Size": limit},
-        )
+    def library_items(self, section_id: str, offset: int = 0, limit: int = 50, sort: str | None = None) -> dict:
+        params: dict = {"X-Plex-Container-Start": offset, "X-Plex-Container-Size": limit}
+        if sort:
+            params["sort"] = sort
+        data = self._get(f"/library/sections/{section_id}/all", params=params)
         return data.get("MediaContainer", {})
 
     def get_item(self, key: str) -> dict:

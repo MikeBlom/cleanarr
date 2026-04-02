@@ -4,17 +4,19 @@
 
 {% set current_page = (offset // limit) + 1 %}
 {% set total_pages = ((total + limit - 1) // limit) if total > 0 else 1 %}
+{% set base = "/browse/section/" ~ section_id %}
 
 <div class="toolbar">
   <h1>Movies <small>({{ total }} total)</small></h1>
   <button id="view-toggle" class="btn btn-sm">☰ Table</button>
 </div>
 
-<form method="get" action="/browse/section/{{ section_id }}" class="search-form">
+<form method="get" action="{{ base }}" class="search-form">
   <input type="hidden" name="limit" value="{{ limit }}">
+  <input type="hidden" name="sort" value="{{ sort }}">
   <input type="text" name="q" value="{{ q }}" placeholder="Search movies…">
   <button type="submit" class="btn">Search</button>
-  {% if q %}<a href="/browse/section/{{ section_id }}?limit={{ limit }}" class="btn">Clear</a>{% endif %}
+  {% if q %}<a href="{{ base }}?limit={{ limit }}&sort={{ sort }}" class="btn">Clear</a>{% endif %}
 </form>
 
 <!-- Grid view -->
@@ -38,7 +40,13 @@
 <!-- Table view -->
 <table id="view-table" class="data-table hidden">
   <thead>
-    <tr><th>Poster</th><th class="sortable">Title</th><th class="sortable">Year</th><th></th></tr>
+    <tr>
+      <th>Poster</th>
+      <th><a href="{{ base }}?offset=0&limit={{ limit }}&sort={% if sort == 'titleSort:asc' %}titleSort:desc{% else %}titleSort:asc{% endif %}" style="color:inherit;text-decoration:none">Title {% if sort.startswith('titleSort') %}{% if sort.endswith(':asc') %}▲{% else %}▼{% endif %}{% endif %}</a></th>
+      <th><a href="{{ base }}?offset=0&limit={{ limit }}&sort={% if sort == 'year:desc' %}year:asc{% else %}year:desc{% endif %}" style="color:inherit;text-decoration:none">Year {% if sort.startswith('year') %}{% if sort.endswith(':asc') %}▲{% else %}▼{% endif %}{% endif %}</a></th>
+      <th><a href="{{ base }}?offset=0&limit={{ limit }}&sort={% if sort == 'addedAt:desc' %}addedAt:asc{% else %}addedAt:desc{% endif %}" style="color:inherit;text-decoration:none">Added {% if sort.startswith('addedAt') %}{% if sort.endswith(':asc') %}▲{% else %}▼{% endif %}{% endif %}</a></th>
+      <th></th>
+    </tr>
   </thead>
   <tbody>
     {% for item in items %}
@@ -54,10 +62,11 @@
       </td>
       <td><a href="/browse/item/{{ item.ratingKey }}">{{ item.title }}</a></td>
       <td>{{ item.year or "—" }}</td>
+      <td>{{ item.addedAt | timestamp_date if item.addedAt else "—" }}</td>
       <td>{% if item.ratingKey | string in cleaned_keys %}<span class="badge badge-completed">✓ Clean</span>{% endif %}</td>
     </tr>
     {% else %}
-    <tr><td colspan="3">No items found.</td></tr>
+    <tr><td colspan="4">No items found.</td></tr>
     {% endfor %}
   </tbody>
 </table>
@@ -67,35 +76,35 @@
 <div class="pagination-bar">
   <div class="page-links">
     {% if current_page > 1 %}
-    <a href="/browse/section/{{ section_id }}?offset=0&limit={{ limit }}" class="btn btn-sm">«</a>
-    <a href="/browse/section/{{ section_id }}?offset={{ (current_page - 2) * limit }}&limit={{ limit }}" class="btn btn-sm">‹</a>
+    <a href="{{ base }}?offset=0&limit={{ limit }}&sort={{ sort }}" class="btn btn-sm">«</a>
+    <a href="{{ base }}?offset={{ (current_page - 2) * limit }}&limit={{ limit }}&sort={{ sort }}" class="btn btn-sm">‹</a>
     {% endif %}
 
     {% set ns = namespace(last_shown=0) %}
     {% for p in range(1, total_pages + 1) %}
       {% if p == 1 or p == total_pages or (p >= current_page - 2 and p <= current_page + 2) %}
         {% if ns.last_shown and p - ns.last_shown > 1 %}<span class="page-ellipsis">…</span>{% endif %}
-        <a href="/browse/section/{{ section_id }}?offset={{ (p - 1) * limit }}&limit={{ limit }}"
+        <a href="{{ base }}?offset={{ (p - 1) * limit }}&limit={{ limit }}&sort={{ sort }}"
            class="btn btn-sm{% if p == current_page %} active{% endif %}">{{ p }}</a>
         {% set ns.last_shown = p %}
       {% endif %}
     {% endfor %}
 
     {% if current_page < total_pages %}
-    <a href="/browse/section/{{ section_id }}?offset={{ current_page * limit }}&limit={{ limit }}" class="btn btn-sm">›</a>
-    <a href="/browse/section/{{ section_id }}?offset={{ (total_pages - 1) * limit }}&limit={{ limit }}" class="btn btn-sm">»</a>
+    <a href="{{ base }}?offset={{ current_page * limit }}&limit={{ limit }}&sort={{ sort }}" class="btn btn-sm">›</a>
+    <a href="{{ base }}?offset={{ (total_pages - 1) * limit }}&limit={{ limit }}&sort={{ sort }}" class="btn btn-sm">»</a>
     {% endif %}
   </div>
 
   <div class="page-controls">
-    <form class="jump-form" onsubmit="jumpToPage(event, '/browse/section/{{ section_id }}', {{ limit }})">
+    <form class="jump-form" onsubmit="jumpToPage(event)">
       <input type="number" min="1" max="{{ total_pages }}" placeholder="Page" class="page-jump-input">
       <button type="submit" class="btn btn-sm">Go</button>
     </form>
     <div class="per-page">
       Per page:
       {% for n in [25, 50, 100, 200] %}
-      <a href="/browse/section/{{ section_id }}?offset=0&limit={{ n }}"
+      <a href="{{ base }}?offset=0&limit={{ n }}&sort={{ sort }}"
          class="btn btn-sm{% if limit == n %} active{% endif %}">{{ n }}</a>
       {% endfor %}
     </div>
@@ -130,10 +139,10 @@
   });
 })();
 
-function jumpToPage(e, base, limit) {
+function jumpToPage(e) {
   e.preventDefault();
-  const p = parseInt(e.target.querySelector('input').value, 10);
-  if (p >= 1) window.location = base + '?offset=' + ((p - 1) * limit) + '&limit=' + limit;
+  var p = parseInt(e.target.querySelector('input').value, 10);
+  if (p >= 1) window.location = '{{ base }}?offset=' + ((p - 1) * {{ limit }}) + '&limit={{ limit }}&sort={{ sort }}';
 }
 </script>
 {% endblock %}

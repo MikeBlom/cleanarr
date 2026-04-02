@@ -55,6 +55,7 @@ async def browse_section(
     offset: int = 0,
     limit: int = 50,
     q: str = "",
+    sort: str = "titleSort:asc",
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
@@ -70,7 +71,7 @@ async def browse_section(
                 container = client.library_items(section_id, offset=0, limit=1)
                 lib_type = container.get("viewGroup", "movie")
         else:
-            container = client.library_items(section_id, offset=offset, limit=limit)
+            container = client.library_items(section_id, offset=offset, limit=limit, sort=sort)
             items = container.get("Metadata", [])
             total = container.get("totalSize", len(items))
             lib_type = container.get("viewGroup", "movie")
@@ -90,6 +91,7 @@ async def browse_section(
             "total": total,
             "lib_type": lib_type,
             "q": q,
+            "sort": sort,
             "cleaned_keys": _cleaned_keys(db),
         },
     )
