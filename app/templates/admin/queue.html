@@ -46,6 +46,11 @@
           <button class="btn btn-sm btn-primary" type="submit">Retry</button>
         </form>
         {% endif %}
+        {% if job.status.value != "running" %}
+        <form method="post" action="/admin/jobs/{{ job.id }}/delete" style="display:inline" onsubmit="return confirm('Delete this job?')">
+          <button class="btn btn-sm btn-danger" type="submit"><i class="fa-solid fa-trash"></i></button>
+        </form>
+        {% endif %}
         <a href="/jobs/{{ job.id }}" class="btn btn-sm">Log</a>
       </td>
     </tr>
