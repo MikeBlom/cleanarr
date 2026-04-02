@@ -340,6 +340,9 @@ async def request_detail(
             except Exception:
                 pass
 
+    queued_ids = [j.id for j in conv_req.jobs if j.status == JobStatus.queued]
+    queue_pos = _queue_positions(db, queued_ids)
+
     return templates.TemplateResponse(
         "requests/detail.html",
         {
@@ -349,9 +352,11 @@ async def request_detail(
             "jobs": conv_req.jobs,
             "jobs_progress": jobs_progress,
             "has_active": has_active,
+            "queue_positions": queue_pos,
             "profanity_defaults": profanity_defaults,
             "nudity_defaults": nudity_defaults,
             "violence_defaults": violence_defaults,
+            "is_admin": user.is_admin,
         },
     )
 
@@ -380,6 +385,9 @@ async def request_jobs_status(
             except Exception:
                 pass
 
+    queued_ids = [j.id for j in conv_req.jobs if j.status == JobStatus.queued]
+    queue_pos = _queue_positions(db, queued_ids)
+
     return templates.TemplateResponse(
         "requests/_jobs_table.html",
         {
@@ -388,8 +396,24 @@ async def request_jobs_status(
             "jobs": conv_req.jobs,
             "jobs_progress": jobs_progress,
             "has_active": has_active,
+            "queue_positions": queue_pos,
+            "is_admin": user.is_admin,
         },
     )
+
+
+def _queue_positions(db: Session, job_ids: list[int]) -> dict[int, int]:
+    """Return a dict of job_id → global queue position for queued jobs."""
+    if not job_ids:
+        return {}
+    all_queued = (
+        db.query(ConversionJob.id)
+        .filter(ConversionJob.status == JobStatus.queued)
+        .order_by(ConversionJob.priority.asc(), ConversionJob.created_at.asc())
+        .all()
+    )
+    ordered = [row[0] for row in all_queued]
+    return {jid: ordered.index(jid) + 1 for jid in job_ids if jid in ordered}
 
 
 def _delete_job_files(job) -> None:

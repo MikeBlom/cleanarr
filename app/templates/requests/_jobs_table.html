@@ -13,17 +13,54 @@
         <th class="sortable">Status</th>
         <th>Input</th>
         <th>Output</th>
-        <th></th>
+        <th>Actions</th>
       </tr>
     </thead>
     <tbody>
       {% for job in jobs %}
       <tr>
         <td>{{ job.title }}</td>
-        <td><span class="badge badge-{{ job.status.value }}">{{ job.status.value }}</span></td>
+        <td>
+          <span class="badge badge-{{ job.status.value }}">{{ job.status.value }}</span>
+          {% if job.status.value == "queued" and queue_positions and job.id in queue_positions %}
+            <span class="muted" style="font-size:0.8rem;margin-left:0.4rem">#{{ queue_positions[job.id] }} in queue</span>
+          {% endif %}
+        </td>
         <td class="path">{{ job.input_file }}</td>
         <td class="path">{{ job.output_file or "—" }}</td>
-        <td><a href="/jobs/{{ job.id }}">Log →</a></td>
+        <td class="action-cell">
+          <a href="/jobs/{{ job.id }}" class="btn btn-sm">Log</a>
+          {% if job.status.value == "queued" %}
+          <form method="post" action="/jobs/{{ job.id }}/move-up" style="display:inline">
+            <button class="btn btn-sm" type="submit" title="Move up">↑</button>
+          </form>
+          <form method="post" action="/jobs/{{ job.id }}/move-down" style="display:inline">
+            <button class="btn btn-sm" type="submit" title="Move down">↓</button>
+          </form>
+          {% endif %}
+          {% if is_admin %}
+          {% if job.status.value == "queued" %}
+          <form method="post" action="/admin/jobs/{{ job.id }}/cancel" style="display:inline">
+            <button class="btn btn-sm btn-danger" type="submit">Cancel</button>
+          </form>
+          {% elif job.status.value == "running" %}
+          <form method="post" action="/admin/jobs/{{ job.id }}/cancel" style="display:inline"
+                onsubmit="return confirm('Cancel this running job?')">
+            <button class="btn btn-sm btn-danger" type="submit">Cancel</button>
+          </form>
+          {% endif %}
+          {% if job.status.value in ("failed", "skipped") %}
+          <form method="post" action="/admin/jobs/{{ job.id }}/retry" style="display:inline">
+            <button class="btn btn-sm btn-primary" type="submit">Retry</button>
+          </form>
+          {% endif %}
+          {% if job.status.value != "running" %}
+          <form method="post" action="/admin/jobs/{{ job.id }}/delete" style="display:inline" onsubmit="return confirm('Delete this job?')">
+            <button class="btn btn-sm btn-danger" type="submit"><i class="fa-solid fa-trash"></i></button>
+          </form>
+          {% endif %}
+          {% endif %}
+        </td>
       </tr>
       {% if job.id in jobs_progress %}
       <tr>

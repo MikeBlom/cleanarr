@@ -108,3 +108,66 @@ async def job_log(
     return HTMLResponse(
         f'<pre id="log-content" data-status="{status}">{log}</pre>'
     )
+
+
+@router.post("/{job_id}/move-up")
+async def move_job_up(
+    job_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    job = db.query(ConversionJob).filter(ConversionJob.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404)
+    if not user.is_admin and (not job.request or job.request.user_id != user.id):
+        raise HTTPException(status_code=403)
+    _reorder_user_job(db, job, user, direction=-1)
+    return RedirectResponse(f"/requests/{job.request_id}", status_code=303)
+
+
+@router.post("/{job_id}/move-down")
+async def move_job_down(
+    job_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    job = db.query(ConversionJob).filter(ConversionJob.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404)
+    if not user.is_admin and (not job.request or job.request.user_id != user.id):
+        raise HTTPException(status_code=403)
+    _reorder_user_job(db, job, user, direction=1)
+    return RedirectResponse(f"/requests/{job.request_id}", status_code=303)
+
+
+def _reorder_user_job(db: Session, job: ConversionJob, user: User, direction: int) -> None:
+    """Reorder a queued job within the user's own jobs (or all jobs if admin)."""
+    if job.status != JobStatus.queued:
+        return
+    if user.is_admin:
+        # Admin can reorder across all queued jobs
+        jobs = (
+            db.query(ConversionJob)
+            .filter(ConversionJob.status == JobStatus.queued)
+            .order_by(ConversionJob.priority.asc(), ConversionJob.created_at.asc())
+            .all()
+        )
+    else:
+        # User can only reorder within their own requests' jobs
+        user_request_ids = [r.id for r in db.query(ConversionRequest.id).filter(ConversionRequest.user_id == user.id).all()]
+        jobs = (
+            db.query(ConversionJob)
+            .filter(ConversionJob.status == JobStatus.queued, ConversionJob.request_id.in_(user_request_ids))
+            .order_by(ConversionJob.priority.asc(), ConversionJob.created_at.asc())
+            .all()
+        )
+    idx = next((i for i, j in enumerate(jobs) if j.id == job.id), None)
+    if idx is None:
+        return
+    swap_idx = idx + direction
+    if swap_idx < 0 or swap_idx >= len(jobs):
+        return
+    for i, j in enumerate(jobs):
+        j.priority = i * 10
+    jobs[idx].priority, jobs[swap_idx].priority = jobs[swap_idx].priority, jobs[idx].priority
+    db.commit()
