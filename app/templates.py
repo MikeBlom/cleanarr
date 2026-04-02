@@ -13,11 +13,34 @@ class _FlashTemplates(Jinja2Templates):
 
     def TemplateResponse(self, name: str, context: dict[str, Any], **kwargs: Any) -> Response:
         request: Request = context.get("request")  # type: ignore[assignment]
-        if request and not context.get("flash_msg"):
-            from .auth.sessions import get_flash
-            flash = get_flash(request)
-            if flash:
-                context["flash_msg"], context["flash_level"] = flash
+        if request:
+            # Flash messages
+            if not context.get("flash_msg"):
+                from .auth.sessions import get_flash
+                flash = get_flash(request)
+                if flash:
+                    context["flash_msg"], context["flash_level"] = flash
+
+            # Masquerade context
+            if not context.get("masquerade_as"):
+                masq_id = request.cookies.get("cleanarr_masquerade")
+                if masq_id:
+                    from .deps import _get_session_user
+                    from .database import SessionLocal
+                    from .models import User
+                    db = SessionLocal()
+                    try:
+                        real_user = _get_session_user(request, db)
+                        if real_user and real_user.is_admin:
+                            target = db.query(User).filter(User.id == int(masq_id)).first()
+                            if target:
+                                context["masquerade_as"] = target
+                                context["real_user"] = real_user
+                    except (ValueError, TypeError):
+                        pass
+                    finally:
+                        db.close()
+
         resp = super().TemplateResponse(name, context, **kwargs)
         if context.get("flash_msg"):
             resp.delete_cookie("cleanarr_flash")

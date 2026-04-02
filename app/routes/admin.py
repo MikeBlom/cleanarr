@@ -169,6 +169,35 @@ async def bulk_user_action(
     return redirect
 
 
+@router.post("/users/{user_id}/masquerade")
+async def masquerade_as_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    target = db.query(User).filter(User.id == user_id).first()
+    if not target:
+        raise HTTPException(status_code=404)
+    if target.id == admin.id:
+        redirect = RedirectResponse("/admin/users", status_code=303)
+        set_flash(redirect, "You can't masquerade as yourself.", "error")
+        return redirect
+    redirect = RedirectResponse("/", status_code=303)
+    redirect.set_cookie("cleanarr_masquerade", str(user_id), httponly=True, samesite="lax")
+    set_flash(redirect, f"Now viewing as {target.username}.", "info")
+    return redirect
+
+
+@router.post("/masquerade/stop")
+async def stop_masquerade(
+    admin: User = Depends(require_admin),
+):
+    redirect = RedirectResponse("/admin/users", status_code=303)
+    redirect.delete_cookie("cleanarr_masquerade")
+    set_flash(redirect, "Masquerade ended.", "success")
+    return redirect
+
+
 @router.get("/users/create", response_class=HTMLResponse)
 async def create_user_form(
     request: Request,
@@ -328,23 +357,9 @@ async def invite_user(
     return redirect
 
 
-@router.get("/queue", response_class=HTMLResponse)
-async def admin_queue(
-    request: Request,
-    db: Session = Depends(get_db),
-    user: User = Depends(require_admin),
-):
-    jobs = (
-        db.query(ConversionJob)
-        .filter(ConversionJob.status.in_([JobStatus.queued, JobStatus.running, JobStatus.failed]))
-        .order_by(ConversionJob.created_at.desc())
-        .limit(200)
-        .all()
-    )
-    return templates.TemplateResponse(
-        "admin/queue.html",
-        {"request": request, "user": user, "jobs": jobs},
-    )
+@router.get("/queue")
+async def admin_queue():
+    return RedirectResponse("/requests", status_code=301)
 
 
 @router.post("/jobs/{job_id}/cancel")
@@ -406,6 +421,29 @@ async def move_job_down(
 ):
     _reorder_job(db, job_id, direction=1)
     return RedirectResponse("/admin/queue", status_code=303)
+
+
+@router.post("/jobs/{job_id}/delete")
+async def delete_job(
+    job_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    job = db.query(ConversionJob).filter(ConversionJob.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404)
+    if job.status == JobStatus.running:
+        redirect = RedirectResponse("/admin/queue", status_code=303)
+        set_flash(redirect, "Cannot delete a running job. Cancel it first.", "error")
+        return redirect
+    request_id = job.request_id
+    title = job.title
+    db.delete(job)
+    db.commit()
+    _rollup_request(db, request_id)
+    redirect = RedirectResponse("/admin/queue", status_code=303)
+    set_flash(redirect, f"Deleted job: {title}", "success")
+    return redirect
 
 
 def _reorder_job(db: Session, job_id: int, direction: int) -> None:

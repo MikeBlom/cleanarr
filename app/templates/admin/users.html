@@ -75,6 +75,11 @@
           {% if not u.last_login %}
           <a href="/admin/users/invite{% if u.email %}?email={{ u.email | urlencode }}{% endif %}" class="btn btn-sm"><i class="fa-solid fa-envelope"></i> Invite</a>
           {% endif %}
+          {% if u.id != user.id and u.is_approved %}
+          <form method="post" action="/admin/users/{{ u.id }}/masquerade" style="display:inline">
+            <button class="btn btn-sm" type="submit" title="View as {{ u.username }}"><i class="fa-solid fa-mask"></i></button>
+          </form>
+          {% endif %}
           {% if u.id != user.id %}
           <form method="post" action="/admin/users/{{ u.id }}/delete" style="display:inline" onsubmit="return confirm('Delete user {{ u.username }}?')">
             <button class="btn btn-sm btn-danger" type="submit"><i class="fa-solid fa-trash"></i></button>

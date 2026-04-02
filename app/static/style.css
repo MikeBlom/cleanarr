@@ -644,6 +644,25 @@ h2 { font-size: 1.2rem; margin: 1.5rem 0 0.75rem; }
   margin-top: 0.75rem;
 }
 
+/* ── Masquerade bar ────────────────────────────────────────────────── */
+.masquerade-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--brand);
+  color: #fff;
+  padding: 0.5rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  z-index: 200;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.3);
+}
+.masquerade-bar .btn { color: #fff; border-color: rgba(255,255,255,0.4); }
+.masquerade-bar .btn:hover { background: rgba(255,255,255,0.15); }
+
 /* ── Bulk action bar ───────────────────────────────────────────────── */
 .bulk-bar {
   display: flex;
