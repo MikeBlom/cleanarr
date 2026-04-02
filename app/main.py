@@ -14,8 +14,9 @@ from .templates import templates
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
-    from .worker import start_worker
-    start_worker()
+    if settings.WORKER_ENABLED:
+        from .worker import start_worker
+        start_worker()
     yield
 
 

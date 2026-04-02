@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     SESSION_MAX_AGE_DAYS: int = 30
 
     # Worker
+    WORKER_ENABLED: bool = True
     WORKER_POLL_INTERVAL_SEC: int = 2
 
     @property

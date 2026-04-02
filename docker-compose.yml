@@ -1,7 +1,7 @@
 services:
   cleanarr:
     build: .
-    restart: unless-stopped
+    restart: always
     ports:
       - "8765:8000"
     env_file:
@@ -15,3 +15,4 @@ services:
       # - /path/to/cleanmedia:/cleanmedia
     environment:
       - DATABASE_URL=sqlite:////data/cleanarr.db
+      - WORKER_ENABLED=false

@@ -11,19 +11,22 @@
     <label class="field">
       <span class="field-label">Server URL</span>
       <input type="text" name="plex_server_url" value="{{ s.plex_server_url }}" class="select-input" placeholder="http://localhost:32400">
+      <span class="field-hint">URL of your Plex Media Server. Find this in <a href="https://support.plex.tv/articles/200289506-remote-access/" target="_blank">Plex Settings &gt; Network</a> &gt; Custom server access URLs, or use http://localhost:32400 if Plex runs on the same machine.</span>
     </label>
     <label class="field">
       <span class="field-label">Admin Token</span>
       <input type="password" name="plex_admin_token" value="{{ s.plex_admin_token }}" class="select-input" autocomplete="off">
+      <span class="field-hint">Your Plex authentication token. <a href="https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/" target="_blank">Find it</a> by opening any media item in Plex Web, clicking "Get Info" &gt; "View XML", and copying the X-Plex-Token parameter from the URL.</span>
     </label>
     <label class="field">
       <span class="field-label">Client ID</span>
       <input type="text" name="plex_client_id" value="{{ s.plex_client_id }}" class="select-input">
+      <span class="field-hint">A unique identifier for CleanArr's Plex OAuth integration. The default works fine — only change this if you run multiple CleanArr instances.</span>
     </label>
     <label class="field">
       <span class="field-label">Admin Plex User IDs</span>
       <input type="text" name="plex_admin_plex_ids" value="{{ s.plex_admin_plex_ids }}" class="select-input" placeholder="comma-separated">
-      <span class="field-hint">Plex user IDs that are auto-admin on first login</span>
+      <span class="field-hint">Plex user IDs that bypass the approval queue and are auto-promoted to admin on first login. Find your Plex user ID at <a href="https://support.plex.tv/articles/203948776-managed-users/" target="_blank">plex.tv/users</a> — it's the numeric ID in the URL when viewing your account.</span>
     </label>
   </fieldset>
 
@@ -32,15 +35,17 @@
     <label class="field">
       <span class="field-label">Plex path prefix (from)</span>
       <input type="text" name="plex_path_prefix_from" value="{{ s.plex_path_prefix_from }}" class="select-input" placeholder="Leave empty if paths match">
+      <span class="field-hint">The path prefix Plex uses internally for media files. If Plex sees files at /data/movies/... but the worker sees them at /media/movies/..., enter /data/movies here. Leave empty if paths already match.</span>
     </label>
     <label class="field">
       <span class="field-label">Container path prefix (to)</span>
       <input type="text" name="plex_path_prefix_to" value="{{ s.plex_path_prefix_to }}" class="select-input">
+      <span class="field-hint">The corresponding path prefix on the worker's filesystem. Paired with the "from" prefix above to translate Plex paths to local paths.</span>
     </label>
     <label class="field">
       <span class="field-label">Allowed media directories</span>
       <input type="text" name="allowed_media_dirs" value="{{ s.allowed_media_dirs }}" class="select-input" placeholder="/media/movies,/media/tv">
-      <span class="field-hint">Comma-separated paths the worker is allowed to access</span>
+      <span class="field-hint">Comma-separated directories the worker is allowed to read/write. Jobs referencing files outside these paths will be rejected. This is a safety measure to prevent accidental processing of non-media files.</span>
     </label>
   </fieldset>
 
@@ -49,6 +54,7 @@
     <label class="field">
       <span class="field-label">cleanmedia binary path</span>
       <input type="text" name="cleanmedia_bin" value="{{ s.cleanmedia_bin }}" class="select-input">
+      <span class="field-hint">Full path to the cleanmedia executable. For the systemd host worker, use the venv path (e.g. /home/user/cleanmedia/.venv/bin/cleanmedia). Inside Docker, use /usr/local/bin/cleanmedia.</span>
     </label>
     <label class="field">
       <span class="field-label">Whisper model</span>
@@ -57,7 +63,7 @@
         <option value="{{ m }}" {% if s.whisper_model == m %}selected{% endif %}>{{ m }}{% if m == "tiny" %} (fastest){% elif m == "large" %} (most accurate, slowest){% endif %}</option>
         {% endfor %}
       </select>
-      <span class="field-hint">Larger models are more accurate but much slower on CPU</span>
+      <span class="field-hint"><a href="https://github.com/openai/whisper#available-models-and-languages" target="_blank">Whisper</a> speech-to-text model used for profanity detection. Larger models transcribe more accurately but are significantly slower, especially on CPU. "base" is a good default; use "tiny" for fast testing or "large" if you have a GPU.</span>
     </label>
   </fieldset>
 
@@ -66,15 +72,17 @@
     <label class="field">
       <span class="field-label">Words (one per line)</span>
       <textarea name="profanity_words" class="select-input textarea-tall" spellcheck="false">{{ words }}</textarea>
+      <span class="field-hint">Individual words to mute. Whisper transcribes the audio, then these words are matched and silenced. One word per line, case-insensitive.</span>
     </label>
     <label class="field">
       <span class="field-label">Phrases (one per line)</span>
       <textarea name="profanity_phrases" class="select-input textarea-med" spellcheck="false">{{ phrases }}</textarea>
+      <span class="field-hint">Multi-word phrases to mute (e.g. "oh my god"). Matched as complete phrases in the transcript. One phrase per line, case-insensitive.</span>
     </label>
     <label class="field">
       <span class="field-label">Audio padding (ms)</span>
       <input type="number" name="profanity_padding_ms" value="{{ s.profanity_padding_ms }}" class="select-input input-narrow" min="0" max="2000">
-      <span class="field-hint">Extra silence around each muted word</span>
+      <span class="field-hint">Extra milliseconds of silence added before and after each muted word. Increase if you hear the start/end of muted words bleeding through. 200ms is a good default.</span>
     </label>
   </fieldset>
 
@@ -93,6 +101,7 @@
     <label class="field">
       <span class="field-label">Video padding (ms)</span>
       <input type="number" name="nudity_padding_ms" value="{{ s.nudity_padding_ms }}" class="select-input input-narrow" min="0" max="5000">
+      <span class="field-hint">Extra milliseconds of video blacked out before and after each detected scene. Increase if brief flashes of content appear at the edges of blacked-out sections.</span>
     </label>
     <label class="field">
       <span class="field-label">Scene merge gap (ms)</span>
@@ -113,14 +122,15 @@
         <label><input type="checkbox" name="nudity_categories" value="{{ cat_id }}" {% if cat_id in categories %}checked{% endif %}> {{ cat_label }}</label>
         {% endfor %}
       </div>
+      <span class="field-hint">Select which types of nudity to detect and black out. Unchecked categories will be ignored even if the model detects them.</span>
     </div>
     <div class="field">
       <span class="field-label">Detectors</span>
       <div class="checkbox-group">
-        {% set all_dets = [("nudenet", "NudeNet (body-part localization)"), ("vit_nsfw", "ViT NSFW (image classification)")] %}
+        {% set all_dets = [("nudenet", '<a href="https://github.com/notAI-tech/NudeNet" target="_blank">NudeNet</a> (body-part localization)'), ("vit_nsfw", "ViT NSFW (image classification)")] %}
         {% set enabled_dets = s.nudity_detectors | from_json if s.nudity_detectors else ["nudenet"] %}
         {% for det_id, det_label in all_dets %}
-        <label><input type="checkbox" name="nudity_detectors" value="{{ det_id }}" {% if det_id in enabled_dets %}checked{% endif %}> {{ det_label }}</label>
+        <label><input type="checkbox" name="nudity_detectors" value="{{ det_id }}" {% if det_id in enabled_dets %}checked{% endif %}> {{ det_label|safe }}</label>
         {% endfor %}
       </div>
       <span class="field-hint">Select which detection models to run. Multiple models vote together via the ensemble strategy.</span>
@@ -132,7 +142,7 @@
         <option value="{{ val }}" {% if s.nudity_ensemble_strategy == val %}selected{% endif %}>{{ lbl }}</option>
         {% endfor %}
       </select>
-      <span class="field-hint">How multiple detectors' scores are combined</span>
+      <span class="field-hint">How scores from multiple detectors are combined. "Weighted average" blends scores (balanced), "Unanimous" requires all detectors to flag a frame (fewest false positives), "Any" flags when any single detector triggers (most aggressive).</span>
     </label>
     <label class="field">
       <span class="field-label">Frame extraction mode</span>
@@ -179,14 +189,17 @@
     <label class="field">
       <span class="field-label">Sample FPS</span>
       <input type="number" name="violence_sample_fps" value="{{ s.violence_sample_fps }}" class="select-input input-narrow" min="0.5" max="10" step="0.5">
+      <span class="field-hint">Frames per second to scan for violence. Higher values catch more but increase processing time.</span>
     </label>
     <label class="field">
       <span class="field-label">Video padding (ms)</span>
       <input type="number" name="violence_padding_ms" value="{{ s.violence_padding_ms }}" class="select-input input-narrow" min="0" max="5000">
+      <span class="field-hint">Extra milliseconds of video blacked out before and after each detected scene.</span>
     </label>
     <label class="field">
       <span class="field-label">Scene merge gap (ms)</span>
       <input type="number" name="violence_scene_merge_gap_ms" value="{{ s.violence_scene_merge_gap_ms }}" class="select-input input-narrow" min="0" max="30000" step="500">
+      <span class="field-hint">Bridge detections within this gap into one continuous blackout.</span>
     </label>
     <div class="field">
       <span class="field-label">Categories to detect</span>
@@ -199,16 +212,18 @@
         <label><input type="checkbox" name="violence_categories" value="{{ cat_id }}" {% if cat_id in violence_categories %}checked{% endif %}> {{ cat_label }}</label>
         {% endfor %}
       </div>
+      <span class="field-hint">Select which types of violence to detect. Unchecked categories will be ignored.</span>
     </div>
     <div class="field">
       <span class="field-label">Detectors</span>
       <div class="checkbox-group">
-        {% set all_viol_dets = [("siglip_violence", "SigLIP Violence (multi-label)"), ("vit_violence", "ViT Violence (binary)")] %}
+        {% set all_viol_dets = [("siglip_violence", '<a href="https://huggingface.co/google/siglip-base-patch16-224" target="_blank">SigLIP</a> Violence (multi-label)'), ("vit_violence", "ViT Violence (binary)")] %}
         {% set enabled_viol_dets = s.violence_detectors | from_json if s.violence_detectors else ["siglip_violence"] %}
         {% for det_id, det_label in all_viol_dets %}
-        <label><input type="checkbox" name="violence_detectors" value="{{ det_id }}" {% if det_id in enabled_viol_dets %}checked{% endif %}> {{ det_label }}</label>
+        <label><input type="checkbox" name="violence_detectors" value="{{ det_id }}" {% if det_id in enabled_viol_dets %}checked{% endif %}> {{ det_label|safe }}</label>
         {% endfor %}
       </div>
+      <span class="field-hint">Select which detection models to run. SigLIP classifies multiple violence types; ViT is a simpler binary (violent/not) classifier. Multiple models vote via the ensemble strategy.</span>
     </div>
     <label class="field">
       <span class="field-label">Ensemble strategy</span>
@@ -217,6 +232,7 @@
         <option value="{{ val }}" {% if s.violence_ensemble_strategy == val %}selected{% endif %}>{{ lbl }}</option>
         {% endfor %}
       </select>
+      <span class="field-hint">How multiple detectors' scores are combined. "Weighted average" blends scores, "Unanimous" requires all to agree, "Any" triggers on a single detector.</span>
     </label>
     <label class="field">
       <span class="field-label">Frame extraction mode</span>
@@ -225,18 +241,22 @@
         <option value="{{ val }}" {% if s.violence_extraction_mode == val %}selected{% endif %}>{{ lbl }}</option>
         {% endfor %}
       </select>
+      <span class="field-hint">How frames are extracted for analysis. Fixed FPS samples at a constant rate; Keyframe detects scene changes (fewer frames, faster); Auto uses keyframe for longer videos.</span>
     </label>
     <label class="field">
       <span class="field-label">Temporal consistency filter</span>
       <input type="checkbox" name="violence_temporal_enabled" value="true" {% if s.violence_temporal_enabled == "true" %}checked{% endif %}>
+      <span class="field-hint">Suppress isolated single-frame false positives using a sliding window.</span>
     </label>
     <label class="field">
       <span class="field-label">Temporal window size</span>
       <input type="number" name="violence_temporal_window" value="{{ s.violence_temporal_window }}" class="select-input input-narrow" min="3" max="15" step="2">
+      <span class="field-hint">Number of frames in the sliding window (odd values recommended).</span>
     </label>
     <label class="field">
       <span class="field-label">Temporal min flagged</span>
       <input type="number" name="violence_temporal_min_flagged" value="{{ s.violence_temporal_min_flagged }}" class="select-input input-narrow" min="1" max="15">
+      <span class="field-hint">Minimum flagged frames within the window required to keep a detection. Lower = more sensitive, higher = fewer false positives.</span>
     </label>
     <label class="field">
       <span class="field-label">Device</span>
@@ -245,6 +265,7 @@
         <option value="{{ val }}" {% if s.violence_device == val %}selected{% endif %}>{{ lbl }}</option>
         {% endfor %}
       </select>
+      <span class="field-hint">Device for ML inference. Auto detects GPU availability. Use CUDA if you have an NVIDIA GPU for much faster processing.</span>
     </label>
   </fieldset>
 
@@ -253,16 +274,17 @@
     <label class="field">
       <span class="field-label">Enable AI advisor</span>
       <input type="checkbox" name="ai_advisor_enabled" value="true" {% if s.ai_advisor_enabled == "true" %}checked{% endif %}>
-      <span class="field-hint">Use a local LLM to evaluate IMDB data and auto-set filter defaults</span>
+      <span class="field-hint">When enabled, CleanArr sends IMDB parental guide data to a local Ollama LLM, which suggests whether nudity/violence/profanity filters should be enabled for each title. Requires Ollama running locally.</span>
     </label>
     <label class="field">
       <span class="field-label">Ollama URL</span>
       <input type="text" name="ollama_url" value="{{ s.ollama_url }}" class="select-input" placeholder="http://localhost:11434">
+      <span class="field-hint">API endpoint for your <a href="https://ollama.com/" target="_blank">Ollama</a> instance. Default http://localhost:11434 works if Ollama runs on the same machine.</span>
     </label>
     <label class="field">
       <span class="field-label">Ollama Model</span>
       <input type="text" name="ollama_model" value="{{ s.ollama_model }}" class="select-input" placeholder="llama3.2">
-      <span class="field-hint">Model must be pulled in Ollama first (e.g. ollama pull llama3.2)</span>
+      <span class="field-hint">Model must be pulled in Ollama first (e.g. ollama pull llama3.2). <a href="https://ollama.com/library" target="_blank">Browse available models</a>.</span>
     </label>
   </fieldset>
 
