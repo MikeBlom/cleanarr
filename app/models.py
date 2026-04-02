@@ -56,8 +56,12 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     last_login: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
-    sessions: Mapped[list[UserSession]] = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
-    requests: Mapped[list[ConversionRequest]] = relationship("ConversionRequest", back_populates="user")
+    sessions: Mapped[list[UserSession]] = relationship(
+        "UserSession", back_populates="user", cascade="all, delete-orphan"
+    )
+    requests: Mapped[list[ConversionRequest]] = relationship(
+        "ConversionRequest", back_populates="user"
+    )
 
 
 class UserSession(Base):
@@ -77,7 +81,9 @@ class ConversionRequest(Base):
     __tablename__ = "conversion_requests"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
     plex_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
     title: Mapped[str] = mapped_column(String(512), nullable=False)
     source: Mapped[str] = mapped_column(String(32), default="plex", nullable=False)
@@ -90,48 +96,76 @@ class ConversionRequest(Base):
     audio_stream_index: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Per-request profanity overrides (NULL = use global settings)
     profanity_extra_words_json: Mapped[str | None] = mapped_column(Text, nullable=True)
-    profanity_extra_phrases_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    profanity_extra_phrases_json: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
     profanity_padding_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     whisper_model: Mapped[str | None] = mapped_column(String(32), nullable=True)
     # Per-request nudity overrides (NULL = use global settings)
     nudity_confidence: Mapped[float | None] = mapped_column(nullable=True)
     nudity_sample_fps: Mapped[float | None] = mapped_column(nullable=True)
     nudity_padding_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    nudity_scene_merge_gap_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    nudity_scene_merge_gap_ms: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
     nudity_categories_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Per-request multi-model pipeline overrides (NULL = use global settings)
     nudity_detectors_json: Mapped[str | None] = mapped_column(Text, nullable=True)
-    nudity_ensemble_strategy: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    nudity_ensemble_strategy: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
     nudity_temporal_enabled: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     nudity_temporal_window: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    nudity_temporal_min_flagged: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    nudity_extraction_mode: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    nudity_temporal_min_flagged: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
+    nudity_extraction_mode: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
     # Per-request violence/gore overrides (NULL = use global settings)
     filter_violence: Mapped[bool] = mapped_column(Boolean, default=False)
     violence_confidence: Mapped[float | None] = mapped_column(nullable=True)
     violence_sample_fps: Mapped[float | None] = mapped_column(nullable=True)
     violence_padding_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    violence_scene_merge_gap_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    violence_scene_merge_gap_ms: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
     violence_categories_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     violence_detectors_json: Mapped[str | None] = mapped_column(Text, nullable=True)
-    violence_ensemble_strategy: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    violence_temporal_enabled: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    violence_ensemble_strategy: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
+    violence_temporal_enabled: Mapped[bool | None] = mapped_column(
+        Boolean, nullable=True
+    )
     violence_temporal_window: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    violence_temporal_min_flagged: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    violence_extraction_mode: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    status: Mapped[RequestStatus] = mapped_column(Enum(RequestStatus), default=RequestStatus.pending)
+    violence_temporal_min_flagged: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
+    violence_extraction_mode: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
+    status: Mapped[RequestStatus] = mapped_column(
+        Enum(RequestStatus), default=RequestStatus.pending
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
     user: Mapped[User | None] = relationship("User", back_populates="requests")
-    jobs: Mapped[list[ConversionJob]] = relationship("ConversionJob", back_populates="request", cascade="all, delete-orphan")
+    jobs: Mapped[list[ConversionJob]] = relationship(
+        "ConversionJob", back_populates="request", cascade="all, delete-orphan"
+    )
 
 
 class ConversionJob(Base):
     __tablename__ = "conversion_jobs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    request_id: Mapped[int] = mapped_column(ForeignKey("conversion_requests.id", ondelete="CASCADE"))
+    request_id: Mapped[int] = mapped_column(
+        ForeignKey("conversion_requests.id", ondelete="CASCADE")
+    )
     plex_key: Mapped[str] = mapped_column(String(64), nullable=False)
     title: Mapped[str] = mapped_column(String(512), nullable=False)
     input_file: Mapped[str] = mapped_column(String(1024), nullable=False)
@@ -145,13 +179,15 @@ class ConversionJob(Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    request: Mapped[ConversionRequest] = relationship("ConversionRequest", back_populates="jobs")
-
-    __table_args__ = (
-        Index("ix_jobs_status_created", "status", "created_at"),
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
+
+    request: Mapped[ConversionRequest] = relationship(
+        "ConversionRequest", back_populates="jobs"
+    )
+
+    __table_args__ = (Index("ix_jobs_status_created", "status", "created_at"),)
 
 
 class Invitation(Base):
@@ -178,4 +214,6 @@ class ImdbParentalGuide(Base):
 
     imdb_id: Mapped[str] = mapped_column(String(20), primary_key=True)
     data_json: Mapped[str] = mapped_column(Text, nullable=False)
-    fetched_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    fetched_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.utcnow
+    )

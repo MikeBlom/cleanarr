@@ -3,6 +3,7 @@ whether nudity/profanity filters should be enabled by default.
 
 Connects to an Ollama instance (or any OpenAI-compatible local API).
 """
+
 from __future__ import annotations
 
 import json
@@ -17,6 +18,7 @@ log = logging.getLogger(__name__)
 @dataclass
 class FilterRecommendation:
     """AI recommendation for whether a filter should run."""
+
     should_filter: bool
     reason: str  # brief explanation for the user
 
@@ -87,7 +89,9 @@ IMDB Descriptions:
 Respond with ONLY a JSON object (no markdown, no code fences):
 {{"should_filter": true/false, "reason": "brief 1-sentence explanation"}}"""
 
-    return _query_llm(prompt, ollama_url, ollama_model, default_filter=True, filter_type="nudity")
+    return _query_llm(
+        prompt, ollama_url, ollama_model, default_filter=True, filter_type="nudity"
+    )
 
 
 def evaluate_profanity(
@@ -143,7 +147,9 @@ IMDB Descriptions:
 Respond with ONLY a JSON object (no markdown, no code fences):
 {{"should_filter": true/false, "reason": "brief 1-sentence explanation"}}"""
 
-    return _query_llm(prompt, ollama_url, ollama_model, default_filter=True, filter_type="profanity")
+    return _query_llm(
+        prompt, ollama_url, ollama_model, default_filter=True, filter_type="profanity"
+    )
 
 
 def evaluate_violence(
@@ -200,7 +206,9 @@ IMDB Descriptions:
 Respond with ONLY a JSON object (no markdown, no code fences):
 {{"should_filter": true/false, "reason": "brief 1-sentence explanation"}}"""
 
-    return _query_llm(prompt, ollama_url, ollama_model, default_filter=True, filter_type="violence")
+    return _query_llm(
+        prompt, ollama_url, ollama_model, default_filter=True, filter_type="violence"
+    )
 
 
 def _query_llm(
@@ -261,7 +269,11 @@ def _query_llm(
         should_filter = bool(parsed.get("should_filter", default_filter))
         reason = str(parsed.get("reason", ""))
         if not reason:
-            reason = "AI analysis complete." if not should_filter else "AI recommends filtering."
+            reason = (
+                "AI analysis complete."
+                if not should_filter
+                else "AI recommends filtering."
+            )
 
         # Sanity check: if the LLM said "don't filter" but the reason
         # clearly describes filterable content, override to filter.
@@ -270,31 +282,59 @@ def _query_llm(
             reason_lower = reason.lower()
             _contradicts = False
             if filter_type == "nudity":
-                _contradicts = any(w in reason_lower for w in (
-                    "explicit", "exposed", "full nudity", "full frontal",
-                    "genitalia", "breasts are shown", "buttocks",
-                ))
+                _contradicts = any(
+                    w in reason_lower
+                    for w in (
+                        "explicit",
+                        "exposed",
+                        "full nudity",
+                        "full frontal",
+                        "genitalia",
+                        "breasts are shown",
+                        "buttocks",
+                    )
+                )
             elif filter_type == "profanity":
-                _contradicts = any(w in reason_lower for w in (
-                    "explicit", "frequent", "strong profanity",
-                    "fuck", "shit", "f-word", "s-word",
-                ))
+                _contradicts = any(
+                    w in reason_lower
+                    for w in (
+                        "explicit",
+                        "frequent",
+                        "strong profanity",
+                        "fuck",
+                        "shit",
+                        "f-word",
+                        "s-word",
+                    )
+                )
             elif filter_type == "violence":
-                _contradicts = any(w in reason_lower for w in (
-                    "graphic", "gore", "bloodshed", "brutal",
-                    "dismember", "torture", "gory", "bloody",
-                ))
+                _contradicts = any(
+                    w in reason_lower
+                    for w in (
+                        "graphic",
+                        "gore",
+                        "bloodshed",
+                        "brutal",
+                        "dismember",
+                        "torture",
+                        "gory",
+                        "bloody",
+                    )
+                )
             if _contradicts:
                 log.warning(
                     "LLM returned should_filter=false for %s but reason "
                     "suggests otherwise; overriding to true. Reason: %s",
-                    filter_type, reason,
+                    filter_type,
+                    reason,
                 )
                 should_filter = True
 
         return FilterRecommendation(should_filter=should_filter, reason=reason)
     except (json.JSONDecodeError, KeyError, TypeError):
-        log.warning("Could not parse LLM response for %s: %s", filter_type, result_text[:200])
+        log.warning(
+            "Could not parse LLM response for %s: %s", filter_type, result_text[:200]
+        )
         return FilterRecommendation(
             should_filter=default_filter,
             reason=f"AI response unclear; defaulting to {filter_type} filter enabled.",

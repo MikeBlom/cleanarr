@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Standalone worker — run on the host with the cleanmedia Python venv."""
+
 import sys
 import os
 
@@ -8,11 +9,12 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 # Load .env from this directory
 from dotenv import load_dotenv
+
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
-from app.config import settings
-from app.database import init_db
-from app.worker import worker_loop
+from app.config import settings  # noqa: E402
+from app.database import init_db  # noqa: E402
+from app.worker import worker_loop  # noqa: E402
 
 if __name__ == "__main__":
     print(f"CLEANMEDIA_BIN = {settings.CLEANMEDIA_BIN}", flush=True)

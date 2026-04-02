@@ -11,16 +11,17 @@ from .config import settings
 from .database import init_db
 from .routes import admin, auth, browse, jobs, requests, uploads
 from .templates import templates
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
     if settings.WORKER_ENABLED:
         from .worker import start_worker
+
         start_worker()
     yield
 
-
-from fastapi.exceptions import HTTPException as StarletteHTTPException
 
 app = FastAPI(title="CleanArr", lifespan=lifespan, docs_url=None, redoc_url=None)
 
@@ -28,9 +29,11 @@ app = FastAPI(title="CleanArr", lifespan=lifespan, docs_url=None, redoc_url=None
 @app.exception_handler(404)
 async def not_found_handler(request: Request, exc):
     from .auth.sessions import set_flash
+
     redirect = RedirectResponse("/", status_code=302)
     set_flash(redirect, "The page you were looking for was not found.", "info")
     return redirect
+
 
 app.mount(
     "/static",
@@ -57,6 +60,7 @@ async def index(request: Request):
     from .deps import get_current_user
     from .database import SessionLocal
     from .models import User
+
     db = SessionLocal()
     try:
         has_users = db.query(User.id).first() is not None
@@ -70,4 +74,6 @@ async def index(request: Request):
         return RedirectResponse("/login", status_code=302)
     if not user.is_approved:
         return RedirectResponse("/pending", status_code=302)
-    return templates.TemplateResponse("dashboard.html", {"request": request, "user": user})
+    return templates.TemplateResponse(
+        "dashboard.html", {"request": request, "user": user}
+    )

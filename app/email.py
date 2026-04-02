@@ -1,4 +1,5 @@
 """Optional email sending for invite notifications."""
+
 from __future__ import annotations
 
 import smtplib

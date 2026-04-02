@@ -32,10 +32,20 @@ async def job_detail(
             content_report = json.loads(job.content_report)
         except Exception:
             pass
-    has_sidecar = Path(job.input_file).with_suffix(".cleanmedia.json").exists() if job.input_file else False
+    has_sidecar = (
+        Path(job.input_file).with_suffix(".cleanmedia.json").exists()
+        if job.input_file
+        else False
+    )
     return templates.TemplateResponse(
         "jobs/detail.html",
-        {"request": request, "user": user, "job": job, "content_report": content_report, "has_sidecar": has_sidecar},
+        {
+            "request": request,
+            "user": user,
+            "job": job,
+            "content_report": content_report,
+            "has_sidecar": has_sidecar,
+        },
     )
 
 
@@ -51,7 +61,9 @@ async def retry_job(
     if not user.is_admin and (not job.request or job.request.user_id != user.id):
         raise HTTPException(status_code=403)
     if job.status not in (JobStatus.failed, JobStatus.skipped):
-        raise HTTPException(status_code=400, detail="Only failed or skipped jobs can be retried.")
+        raise HTTPException(
+            status_code=400, detail="Only failed or skipped jobs can be retried."
+        )
     # Reset job to queued — keep sidecar on disk for --resume
     job.status = JobStatus.queued
     job.error_message = None
@@ -60,7 +72,11 @@ async def retry_job(
     job.finished_at = None
     job.progress_json = None
     # Also ensure the parent request is queued
-    req = db.query(ConversionRequest).filter(ConversionRequest.id == job.request_id).first()
+    req = (
+        db.query(ConversionRequest)
+        .filter(ConversionRequest.id == job.request_id)
+        .first()
+    )
     if req and req.status != RequestStatus.queued:
         req.status = RequestStatus.queued
     db.commit()
@@ -105,9 +121,7 @@ async def job_log(
         raise HTTPException(status_code=403)
     log = job.log_output or ""
     status = job.status.value if job.status else "unknown"
-    return HTMLResponse(
-        f'<pre id="log-content" data-status="{status}">{log}</pre>'
-    )
+    return HTMLResponse(f'<pre id="log-content" data-status="{status}">{log}</pre>')
 
 
 @router.post("/{job_id}/move-up")
@@ -140,7 +154,9 @@ async def move_job_down(
     return RedirectResponse(f"/requests/{job.request_id}", status_code=303)
 
 
-def _reorder_user_job(db: Session, job: ConversionJob, user: User, direction: int) -> None:
+def _reorder_user_job(
+    db: Session, job: ConversionJob, user: User, direction: int
+) -> None:
     """Reorder a queued job within the user's own jobs (or all jobs if admin)."""
     if job.status != JobStatus.queued:
         return
@@ -154,10 +170,18 @@ def _reorder_user_job(db: Session, job: ConversionJob, user: User, direction: in
         )
     else:
         # User can only reorder within their own requests' jobs
-        user_request_ids = [r.id for r in db.query(ConversionRequest.id).filter(ConversionRequest.user_id == user.id).all()]
+        user_request_ids = [
+            r.id
+            for r in db.query(ConversionRequest.id)
+            .filter(ConversionRequest.user_id == user.id)
+            .all()
+        ]
         jobs = (
             db.query(ConversionJob)
-            .filter(ConversionJob.status == JobStatus.queued, ConversionJob.request_id.in_(user_request_ids))
+            .filter(
+                ConversionJob.status == JobStatus.queued,
+                ConversionJob.request_id.in_(user_request_ids),
+            )
             .order_by(ConversionJob.priority.asc(), ConversionJob.created_at.asc())
             .all()
         )
@@ -169,5 +193,8 @@ def _reorder_user_job(db: Session, job: ConversionJob, user: User, direction: in
         return
     for i, j in enumerate(jobs):
         j.priority = i * 10
-    jobs[idx].priority, jobs[swap_idx].priority = jobs[swap_idx].priority, jobs[idx].priority
+    jobs[idx].priority, jobs[swap_idx].priority = (
+        jobs[swap_idx].priority,
+        jobs[idx].priority,
+    )
     db.commit()

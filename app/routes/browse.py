@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import json
+from pathlib import Path as _Path
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -16,10 +18,22 @@ router = APIRouter(prefix="/browse")
 
 
 def _cleaned_keys(db: Session) -> set[str]:
-    job_keys = {r[0] for r in db.query(ConversionJob.plex_key).filter(ConversionJob.status == JobStatus.completed).all()}
-    req_keys = {r[0] for r in db.query(ConversionRequest.plex_key).filter(
-        ConversionRequest.status.in_([RequestStatus.complete, RequestStatus.partially_complete])
-    ).all()}
+    job_keys = {
+        r[0]
+        for r in db.query(ConversionJob.plex_key)
+        .filter(ConversionJob.status == JobStatus.completed)
+        .all()
+    }
+    req_keys = {
+        r[0]
+        for r in db.query(ConversionRequest.plex_key)
+        .filter(
+            ConversionRequest.status.in_(
+                [RequestStatus.complete, RequestStatus.partially_complete]
+            )
+        )
+        .all()
+    }
     return job_keys | req_keys
 
 
@@ -33,7 +47,9 @@ def _parse_report(report_json: str | None) -> list[dict] | None:
 
 
 @router.get("", response_class=HTMLResponse)
-async def browse_index(request: Request, db: Session = Depends(get_db), user: User = Depends(require_user)):
+async def browse_index(
+    request: Request, db: Session = Depends(get_db), user: User = Depends(require_user)
+):
     client = PlexClient(db)
     try:
         libs = client.libraries()
@@ -71,14 +87,18 @@ async def browse_section(
                 container = client.library_items(section_id, offset=0, limit=1)
                 lib_type = container.get("viewGroup", "movie")
         else:
-            container = client.library_items(section_id, offset=offset, limit=limit, sort=sort)
+            container = client.library_items(
+                section_id, offset=offset, limit=limit, sort=sort
+            )
             items = container.get("Metadata", [])
             total = container.get("totalSize", len(items))
             lib_type = container.get("viewGroup", "movie")
     except PlexError as e:
         raise HTTPException(status_code=502, detail=str(e))
 
-    template = "browse/shows.html" if lib_type in ("show", "artist") else "browse/movies.html"
+    template = (
+        "browse/shows.html" if lib_type in ("show", "artist") else "browse/movies.html"
+    )
     return templates.TemplateResponse(
         template,
         {
@@ -98,14 +118,24 @@ async def browse_section(
 
 
 @router.get("/search", response_class=HTMLResponse)
-async def global_search(request: Request, q: str = "", db: Session = Depends(get_db), user: User = Depends(require_user)):
+async def global_search(
+    request: Request,
+    q: str = "",
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
     hubs: list[dict] = []
     error = None
     if q:
         client = PlexClient(db)
         try:
             raw = client.global_search(q)
-            hubs = [h for h in raw if h.get("Metadata") and h.get("type") in ("movie", "show", "season", "episode")]
+            hubs = [
+                h
+                for h in raw
+                if h.get("Metadata")
+                and h.get("type") in ("movie", "show", "season", "episode")
+            ]
         except PlexError as e:
             error = str(e)
     return templates.TemplateResponse(
@@ -135,7 +165,9 @@ def browse_item_parental_guide(
 
     imdb_id = extract_imdb_id_for_item(item, client)
     if not imdb_id:
-        return HTMLResponse('<p class="muted">No IMDB data available for this title.</p>')
+        return HTMLResponse(
+            '<p class="muted">No IMDB data available for this title.</p>'
+        )
 
     guide = get_parental_guide(imdb_id, db)
     if not guide:
@@ -168,6 +200,7 @@ async def request_form(
     audio_streams = client.get_audio_streams(item)
 
     from .. import app_settings
+
     profanity_defaults = {
         "profanity_padding_ms": app_settings.get(db, "profanity_padding_ms"),
         "whisper_model": app_settings.get(db, "whisper_model"),
@@ -182,20 +215,28 @@ async def request_form(
         "nudity_ensemble_strategy": app_settings.get(db, "nudity_ensemble_strategy"),
         "nudity_temporal_enabled": app_settings.get(db, "nudity_temporal_enabled"),
         "nudity_temporal_window": app_settings.get(db, "nudity_temporal_window"),
-        "nudity_temporal_min_flagged": app_settings.get(db, "nudity_temporal_min_flagged"),
+        "nudity_temporal_min_flagged": app_settings.get(
+            db, "nudity_temporal_min_flagged"
+        ),
         "nudity_extraction_mode": app_settings.get(db, "nudity_extraction_mode"),
     }
     violence_defaults = {
         "violence_confidence": app_settings.get(db, "violence_confidence"),
         "violence_sample_fps": app_settings.get(db, "violence_sample_fps"),
         "violence_padding_ms": app_settings.get(db, "violence_padding_ms"),
-        "violence_scene_merge_gap_ms": app_settings.get(db, "violence_scene_merge_gap_ms"),
+        "violence_scene_merge_gap_ms": app_settings.get(
+            db, "violence_scene_merge_gap_ms"
+        ),
         "violence_categories": app_settings.get(db, "violence_categories"),
         "violence_detectors": app_settings.get(db, "violence_detectors"),
-        "violence_ensemble_strategy": app_settings.get(db, "violence_ensemble_strategy"),
+        "violence_ensemble_strategy": app_settings.get(
+            db, "violence_ensemble_strategy"
+        ),
         "violence_temporal_enabled": app_settings.get(db, "violence_temporal_enabled"),
         "violence_temporal_window": app_settings.get(db, "violence_temporal_window"),
-        "violence_temporal_min_flagged": app_settings.get(db, "violence_temporal_min_flagged"),
+        "violence_temporal_min_flagged": app_settings.get(
+            db, "violence_temporal_min_flagged"
+        ),
         "violence_extraction_mode": app_settings.get(db, "violence_extraction_mode"),
     }
 
@@ -273,23 +314,32 @@ async def browse_item_job_progress(
 
     active_jobs = (
         db.query(ConversionJob)
-        .filter(ConversionJob.plex_key == key, ConversionJob.status.in_([JobStatus.queued, JobStatus.running]))
+        .filter(
+            ConversionJob.plex_key == key,
+            ConversionJob.status.in_([JobStatus.queued, JobStatus.running]),
+        )
         .all()
     )
     # For show/season views, also find active jobs via requests
     if not active_jobs:
         active_req_ids = [
-            r[0] for r in db.query(ConversionRequest.id)
+            r[0]
+            for r in db.query(ConversionRequest.id)
             .filter(
                 ConversionRequest.plex_key == key,
-                ConversionRequest.status.in_([RequestStatus.queued, RequestStatus.partially_complete]),
+                ConversionRequest.status.in_(
+                    [RequestStatus.queued, RequestStatus.partially_complete]
+                ),
             )
             .all()
         ]
         if active_req_ids:
             active_jobs = (
                 db.query(ConversionJob)
-                .filter(ConversionJob.request_id.in_(active_req_ids), ConversionJob.status.in_([JobStatus.queued, JobStatus.running]))
+                .filter(
+                    ConversionJob.request_id.in_(active_req_ids),
+                    ConversionJob.status.in_([JobStatus.queued, JobStatus.running]),
+                )
                 .all()
             )
 
@@ -297,20 +347,28 @@ async def browse_item_job_progress(
     if not active_jobs:
         recent_jobs = (
             db.query(ConversionJob)
-            .filter(ConversionJob.plex_key == key, ConversionJob.status.in_([JobStatus.completed, JobStatus.failed]))
+            .filter(
+                ConversionJob.plex_key == key,
+                ConversionJob.status.in_([JobStatus.completed, JobStatus.failed]),
+            )
             .order_by(ConversionJob.finished_at.desc())
             .limit(1)
             .all()
         )
         # Only show if finished in the last 10 seconds (gives polling time to show final state)
         from datetime import datetime, timedelta, timezone
+
         now = datetime.now(timezone.utc)
         for j in recent_jobs:
-            if j.finished_at and (now - j.finished_at.replace(tzinfo=timezone.utc)) < timedelta(seconds=10):
+            if j.finished_at and (
+                now - j.finished_at.replace(tzinfo=timezone.utc)
+            ) < timedelta(seconds=10):
                 active_jobs = [j]
 
     jobs_progress = {}
-    has_active = any(j.status in (JobStatus.queued, JobStatus.running) for j in active_jobs)
+    has_active = any(
+        j.status in (JobStatus.queued, JobStatus.running) for j in active_jobs
+    )
     for job in active_jobs:
         if job.progress_json:
             try:
@@ -352,7 +410,9 @@ async def browse_item(
     # Most recent completed job for this item (for content report)
     last_job = (
         db.query(ConversionJob)
-        .filter(ConversionJob.plex_key == key, ConversionJob.status == JobStatus.completed)
+        .filter(
+            ConversionJob.plex_key == key, ConversionJob.status == JobStatus.completed
+        )
         .order_by(ConversionJob.finished_at.desc())
         .first()
     )
@@ -364,14 +424,23 @@ async def browse_item(
     child_cleaned: set[str] = set()
     if child_keys:
         child_cleaned = {
-            r[0] for r in db.query(ConversionJob.plex_key)
-            .filter(ConversionJob.plex_key.in_(child_keys), ConversionJob.status == JobStatus.completed)
+            r[0]
+            for r in db.query(ConversionJob.plex_key)
+            .filter(
+                ConversionJob.plex_key.in_(child_keys),
+                ConversionJob.status == JobStatus.completed,
+            )
             .all()
         }
         child_cleaned |= {
-            r[0] for r in db.query(ConversionRequest.plex_key)
-            .filter(ConversionRequest.plex_key.in_(child_keys),
-                    ConversionRequest.status.in_([RequestStatus.complete, RequestStatus.partially_complete]))
+            r[0]
+            for r in db.query(ConversionRequest.plex_key)
+            .filter(
+                ConversionRequest.plex_key.in_(child_keys),
+                ConversionRequest.status.in_(
+                    [RequestStatus.complete, RequestStatus.partially_complete]
+                ),
+            )
             .all()
         }
 
@@ -381,23 +450,32 @@ async def browse_item(
     # Active jobs for progress display
     active_jobs = (
         db.query(ConversionJob)
-        .filter(ConversionJob.plex_key == key, ConversionJob.status.in_([JobStatus.queued, JobStatus.running]))
+        .filter(
+            ConversionJob.plex_key == key,
+            ConversionJob.status.in_([JobStatus.queued, JobStatus.running]),
+        )
         .all()
     )
     # For show/season views, also find active jobs via requests
     if not active_jobs and item_type in ("show", "season"):
         active_req_ids = [
-            r[0] for r in db.query(ConversionRequest.id)
+            r[0]
+            for r in db.query(ConversionRequest.id)
             .filter(
                 ConversionRequest.plex_key == key,
-                ConversionRequest.status.in_([RequestStatus.queued, RequestStatus.partially_complete]),
+                ConversionRequest.status.in_(
+                    [RequestStatus.queued, RequestStatus.partially_complete]
+                ),
             )
             .all()
         ]
         if active_req_ids:
             active_jobs = (
                 db.query(ConversionJob)
-                .filter(ConversionJob.request_id.in_(active_req_ids), ConversionJob.status.in_([JobStatus.queued, JobStatus.running]))
+                .filter(
+                    ConversionJob.request_id.in_(active_req_ids),
+                    ConversionJob.status.in_([JobStatus.queued, JobStatus.running]),
+                )
                 .all()
             )
 
@@ -434,9 +512,6 @@ async def browse_item(
 # Thumbnail proxy — mounted at app level (not under /browse prefix)
 thumb_router = APIRouter()
 
-import hashlib
-from pathlib import Path as _Path
-
 _THUMB_CACHE_DIR = _Path("/data/thumb_cache")
 
 
@@ -444,6 +519,7 @@ _THUMB_CACHE_DIR = _Path("/data/thumb_cache")
 async def plex_thumb(url: str, db: Session = Depends(get_db)):
     """Proxy a Plex thumbnail, cached to disk permanently."""
     from .. import app_settings as _as
+
     if not url.startswith("/"):
         raise HTTPException(status_code=400)
 

@@ -98,12 +98,18 @@ def extract_imdb_id_for_item(item: dict, plex_client) -> str | None:
 def get_parental_guide(imdb_id: str, db: Session) -> dict | None:
     """Get parsed parental guide data, using SQLite cache with 30-day TTL."""
     cached = db.get(ImdbParentalGuide, imdb_id)
-    if cached and cached.fetched_at > datetime.utcnow() - timedelta(days=CACHE_TTL_DAYS):
+    if cached and cached.fetched_at > datetime.utcnow() - timedelta(
+        days=CACHE_TTL_DAYS
+    ):
         try:
             guide = json.loads(cached.data_json)
             # Fix labels from older cached entries that stored severity as label
             for key, info in guide.items():
-                if key in _DISPLAY_LABELS and info.get("label") in (None, info.get("severity"), "None"):
+                if key in _DISPLAY_LABELS and info.get("label") in (
+                    None,
+                    info.get("severity"),
+                    "None",
+                ):
                     info["label"] = _DISPLAY_LABELS[key]
             return guide
         except Exception:
@@ -118,11 +124,13 @@ def get_parental_guide(imdb_id: str, db: Session) -> dict | None:
         cached.data_json = data_json
         cached.fetched_at = datetime.utcnow()
     else:
-        db.add(ImdbParentalGuide(
-            imdb_id=imdb_id,
-            data_json=data_json,
-            fetched_at=datetime.utcnow(),
-        ))
+        db.add(
+            ImdbParentalGuide(
+                imdb_id=imdb_id,
+                data_json=data_json,
+                fetched_at=datetime.utcnow(),
+            )
+        )
     db.commit()
 
     return parsed
@@ -181,7 +189,9 @@ def _fetch_parental_guide(imdb_id: str) -> dict | None:
         if cat_id not in all_cat_ids:
             continue
         result[cat_id.lower()] = {
-            "label": cat_labels.get(cat_id, _DISPLAY_LABELS.get(cat_id.lower(), cat_id)),
+            "label": cat_labels.get(
+                cat_id, _DISPLAY_LABELS.get(cat_id.lower(), cat_id)
+            ),
             "severity": severity_map.get(cat_id, "Unknown"),
             "descriptions": cat_items.get(cat_id, []),
         }
