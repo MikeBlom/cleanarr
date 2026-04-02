@@ -467,117 +467,114 @@ def _reorder_job(db: Session, job_id: int, direction: int) -> None:
     db.commit()
 
 
-@router.get("/settings", response_class=HTMLResponse)
-async def admin_settings(
+_SETTINGS_SECTIONS = ("plex", "paths", "worker", "profanity", "nudity", "violence", "ai")
+
+
+@router.get("/settings")
+async def settings_index():
+    return RedirectResponse("/admin/settings/plex", status_code=302)
+
+
+@router.get("/settings/{section}", response_class=HTMLResponse)
+async def settings_section(
     request: Request,
+    section: str,
     db: Session = Depends(get_db),
     user: User = Depends(require_admin),
 ):
+    if section not in _SETTINGS_SECTIONS:
+        return RedirectResponse("/admin/settings/plex", status_code=302)
+
     from .. import app_settings
-    s = app_settings.all_settings(db)
-    # Parse JSON lists for display in textareas
     import json
-    words = "\n".join(json.loads(s.get("profanity_words", "[]")))
-    phrases = "\n".join(json.loads(s.get("profanity_phrases", "[]")))
-    categories = json.loads(s.get("nudity_categories", "[]"))
-    violence_categories = json.loads(s.get("violence_categories", "[]"))
-    return templates.TemplateResponse(
-        "admin/settings.html",
-        {
-            "request": request,
-            "user": user,
-            "s": s,
-            "words": words,
-            "phrases": phrases,
-            "categories": categories,
-            "violence_categories": violence_categories,
-            "saved": request.query_params.get("saved"),
-        },
-    )
+    s = app_settings.all_settings(db)
+
+    ctx: dict = {
+        "request": request, "user": user, "s": s,
+        "active_tab": section,
+        "saved": request.query_params.get("saved"),
+    }
+
+    if section == "profanity":
+        ctx["words"] = "\n".join(json.loads(s.get("profanity_words", "[]")))
+        ctx["phrases"] = "\n".join(json.loads(s.get("profanity_phrases", "[]")))
+    elif section == "nudity":
+        ctx["categories"] = json.loads(s.get("nudity_categories", "[]"))
+    elif section == "violence":
+        ctx["violence_categories"] = json.loads(s.get("violence_categories", "[]"))
+
+    return templates.TemplateResponse(f"admin/settings/{section}.html", ctx)
 
 
-@router.post("/settings")
-async def save_settings(
+@router.post("/settings/{section}")
+async def save_settings_section(
     request: Request,
+    section: str,
     db: Session = Depends(get_db),
     user: User = Depends(require_admin),
 ):
+    if section not in _SETTINGS_SECTIONS:
+        return RedirectResponse("/admin/settings/plex", status_code=302)
+
     from .. import app_settings
     import json
     form = await request.form()
 
-    # Simple string fields
-    for key in (
-        "plex_server_url", "plex_admin_token", "plex_client_id",
-        "plex_admin_plex_ids", "plex_path_prefix_from", "plex_path_prefix_to",
-        "allowed_media_dirs", "cleanmedia_bin", "whisper_model",
-        "ollama_url", "ollama_model",
-    ):
-        val = form.get(key, "")
-        app_settings.put(db, key, str(val).strip())
+    if section == "plex":
+        for key in ("plex_server_url", "plex_admin_token", "plex_client_id", "plex_admin_plex_ids"):
+            app_settings.put(db, key, str(form.get(key, "")).strip())
 
-    # Numeric fields
-    for key in ("profanity_padding_ms", "nudity_padding_ms", "nudity_scene_merge_gap_ms", "nudity_sample_fps"):
-        val = form.get(key, "")
-        app_settings.put(db, key, str(val).strip())
+    elif section == "paths":
+        for key in ("plex_path_prefix_from", "plex_path_prefix_to", "allowed_media_dirs"):
+            app_settings.put(db, key, str(form.get(key, "")).strip())
 
-    app_settings.put(db, "nudity_confidence", str(form.get("nudity_confidence", "0.7")).strip())
+    elif section == "worker":
+        for key in ("cleanmedia_bin", "whisper_model"):
+            app_settings.put(db, key, str(form.get(key, "")).strip())
 
-    # Profanity words/phrases from newline-separated textareas
-    raw_words = str(form.get("profanity_words", ""))
-    words = [w.strip().lower() for w in raw_words.splitlines() if w.strip()]
-    app_settings.put(db, "profanity_words", json.dumps(words))
+    elif section == "profanity":
+        raw_words = str(form.get("profanity_words", ""))
+        app_settings.put(db, "profanity_words", json.dumps([w.strip().lower() for w in raw_words.splitlines() if w.strip()]))
+        raw_phrases = str(form.get("profanity_phrases", ""))
+        app_settings.put(db, "profanity_phrases", json.dumps([p.strip().lower() for p in raw_phrases.splitlines() if p.strip()]))
+        app_settings.put(db, "profanity_padding_ms", str(form.get("profanity_padding_ms", "")).strip())
 
-    raw_phrases = str(form.get("profanity_phrases", ""))
-    phrases = [p.strip().lower() for p in raw_phrases.splitlines() if p.strip()]
-    app_settings.put(db, "profanity_phrases", json.dumps(phrases))
+    elif section == "nudity":
+        app_settings.put(db, "nudity_confidence", str(form.get("nudity_confidence", "0.7")).strip())
+        for key in ("nudity_sample_fps", "nudity_padding_ms", "nudity_scene_merge_gap_ms"):
+            app_settings.put(db, key, str(form.get(key, "")).strip())
+        app_settings.put(db, "nudity_categories", json.dumps(list(form.getlist("nudity_categories"))))
+        dets = form.getlist("nudity_detectors")
+        app_settings.put(db, "nudity_detectors", json.dumps(list(dets)) if dets else '["nudenet"]')
+        for key in ("nudity_ensemble_strategy", "nudity_extraction_mode", "nudity_device"):
+            app_settings.put(db, key, str(form.get(key, "")).strip())
+        app_settings.put(db, "nudity_temporal_enabled", "true" if form.get("nudity_temporal_enabled") else "false")
+        for key in ("nudity_temporal_window", "nudity_temporal_min_flagged"):
+            app_settings.put(db, key, str(form.get(key, "")).strip())
 
-    # Nudity categories from checkboxes
-    cats = form.getlist("nudity_categories")
-    app_settings.put(db, "nudity_categories", json.dumps(list(cats)))
+    elif section == "violence":
+        app_settings.put(db, "violence_confidence", str(form.get("violence_confidence", "0.5")).strip())
+        for key in ("violence_sample_fps", "violence_padding_ms", "violence_scene_merge_gap_ms"):
+            app_settings.put(db, key, str(form.get(key, "")).strip())
+        app_settings.put(db, "violence_categories", json.dumps(list(form.getlist("violence_categories"))))
+        viol_dets = form.getlist("violence_detectors")
+        app_settings.put(db, "violence_detectors", json.dumps(list(viol_dets)) if viol_dets else '["siglip_violence"]')
+        for key in ("violence_ensemble_strategy", "violence_extraction_mode", "violence_device"):
+            app_settings.put(db, key, str(form.get(key, "")).strip())
+        app_settings.put(db, "violence_temporal_enabled", "true" if form.get("violence_temporal_enabled") else "false")
+        for key in ("violence_temporal_window", "violence_temporal_min_flagged"):
+            app_settings.put(db, key, str(form.get(key, "")).strip())
 
-    # Multi-model pipeline settings
-    dets = form.getlist("nudity_detectors")
-    app_settings.put(db, "nudity_detectors", json.dumps(list(dets)) if dets else '["nudenet"]')
-
-    for key in ("nudity_ensemble_strategy", "nudity_extraction_mode", "nudity_device"):
-        val = form.get(key, "")
-        app_settings.put(db, key, str(val).strip())
-
-    app_settings.put(db, "nudity_temporal_enabled", "true" if form.get("nudity_temporal_enabled") else "false")
-
-    for key in ("nudity_temporal_window", "nudity_temporal_min_flagged"):
-        val = form.get(key, "")
-        app_settings.put(db, key, str(val).strip())
-
-    # Violence settings
-    app_settings.put(db, "violence_confidence", str(form.get("violence_confidence", "0.5")).strip())
-
-    for key in ("violence_padding_ms", "violence_scene_merge_gap_ms", "violence_sample_fps"):
-        val = form.get(key, "")
-        app_settings.put(db, key, str(val).strip())
-
-    viol_cats = form.getlist("violence_categories")
-    app_settings.put(db, "violence_categories", json.dumps(list(viol_cats)))
-
-    viol_dets = form.getlist("violence_detectors")
-    app_settings.put(db, "violence_detectors", json.dumps(list(viol_dets)) if viol_dets else '["siglip_violence"]')
-
-    for key in ("violence_ensemble_strategy", "violence_extraction_mode", "violence_device"):
-        val = form.get(key, "")
-        app_settings.put(db, key, str(val).strip())
-
-    app_settings.put(db, "violence_temporal_enabled", "true" if form.get("violence_temporal_enabled") else "false")
-
-    for key in ("violence_temporal_window", "violence_temporal_min_flagged"):
-        val = form.get(key, "")
-        app_settings.put(db, key, str(val).strip())
-
-    # AI advisor checkbox
-    app_settings.put(db, "ai_advisor_enabled", "true" if form.get("ai_advisor_enabled") else "false")
+    elif section == "ai":
+        app_settings.put(db, "ai_advisor_enabled", "true" if form.get("ai_advisor_enabled") else "false")
+        for key in ("ollama_url", "ollama_model"):
+            app_settings.put(db, key, str(form.get(key, "")).strip())
 
     db.commit()
-    return RedirectResponse("/admin/settings?saved=1", status_code=303)
+
+    redirect = RedirectResponse(f"/admin/settings/{section}?saved=1", status_code=303)
+    set_flash(redirect, "Settings saved.", "success")
+    return redirect
 
 
 def _rollup_request(db: Session, request_id: int) -> None:

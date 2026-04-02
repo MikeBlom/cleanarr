@@ -63,10 +63,21 @@
       <i class="fa-solid fa-users sidebar-item__icon"></i>
       <span class="sidebar-item__text">Users</span>
     </a>
-    <a href="/admin/settings" class="sidebar-item {% if request.url.path == '/admin/settings' %}sidebar-item--active{% endif %}">
-      <i class="fa-solid fa-gear sidebar-item__icon"></i>
-      <span class="sidebar-item__text">Settings</span>
+    <div class="sidebar-section">Settings</div>
+    {% for slug, icon, label in [
+      ("plex", "fa-server", "Plex"),
+      ("paths", "fa-folder-tree", "Paths"),
+      ("worker", "fa-microchip", "Worker"),
+      ("profanity", "fa-volume-xmark", "Profanity"),
+      ("nudity", "fa-eye-slash", "Nudity"),
+      ("violence", "fa-shield-halved", "Violence"),
+      ("ai", "fa-robot", "AI Advisor"),
+    ] %}
+    <a href="/admin/settings/{{ slug }}" class="sidebar-item sidebar-item--sub {% if request.url.path == '/admin/settings/' ~ slug %}sidebar-item--active{% endif %}">
+      <i class="fa-solid {{ icon }} sidebar-item__icon"></i>
+      <span class="sidebar-item__text">{{ label }}</span>
     </a>
+    {% endfor %}
     {% endif %}
   </nav>
 

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Paths – Settings – CleanArr{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+{% include "admin/settings/_nav.html" %}
+<form method="post" action="/admin/settings/paths">
+  <fieldset>
+    <legend>Path Mapping</legend>
+    <label class="field">
+      <span class="field-label">Plex path prefix (from)</span>
+      <input type="text" name="plex_path_prefix_from" value="{{ s.plex_path_prefix_from }}" class="select-input" placeholder="Leave empty if paths match">
+      <span class="field-hint">The path prefix Plex uses internally for media files. If Plex sees files at /data/movies/... but the worker sees them at /media/movies/..., enter /data/movies here. Leave empty if paths already match.</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Container path prefix (to)</span>
+      <input type="text" name="plex_path_prefix_to" value="{{ s.plex_path_prefix_to }}" class="select-input">
+      <span class="field-hint">The corresponding path prefix on the worker's filesystem. Paired with the "from" prefix above to translate Plex paths to local paths.</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Allowed media directories</span>
+      <input type="text" name="allowed_media_dirs" value="{{ s.allowed_media_dirs }}" class="select-input" placeholder="/media/movies,/media/tv">
+      <span class="field-hint">Comma-separated directories the worker is allowed to read/write. Jobs referencing files outside these paths will be rejected. This is a safety measure to prevent accidental processing of non-media files.</span>
+    </label>
+  </fieldset>
+  <div class="form-actions"><button type="submit" class="btn btn-primary">Save</button></div>
+</form>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Worker – Settings – CleanArr{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+{% include "admin/settings/_nav.html" %}
+<form method="post" action="/admin/settings/worker">
+  <fieldset>
+    <legend>Worker</legend>
+    <label class="field">
+      <span class="field-label">cleanmedia binary path</span>
+      <input type="text" name="cleanmedia_bin" value="{{ s.cleanmedia_bin }}" class="select-input">
+      <span class="field-hint">Full path to the cleanmedia executable. For the systemd host worker, use the venv path (e.g. /home/user/cleanmedia/.venv/bin/cleanmedia). Inside Docker, use /usr/local/bin/cleanmedia.</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Whisper model</span>
+      <select name="whisper_model" class="select-input">
+        {% for m in ["tiny", "base", "small", "medium", "large"] %}
+        <option value="{{ m }}" {% if s.whisper_model == m %}selected{% endif %}>{{ m }}{% if m == "tiny" %} (fastest){% elif m == "large" %} (most accurate, slowest){% endif %}</option>
+        {% endfor %}
+      </select>
+      <span class="field-hint"><a href="https://github.com/openai/whisper#available-models-and-languages" target="_blank">Whisper</a> speech-to-text model used for profanity detection. Larger models transcribe more accurately but are significantly slower, especially on CPU. "base" is a good default; use "tiny" for fast testing or "large" if you have a GPU.</span>
+    </label>
+  </fieldset>
+  <div class="form-actions"><button type="submit" class="btn btn-primary">Save</button></div>
+</form>
+{% endblock %}

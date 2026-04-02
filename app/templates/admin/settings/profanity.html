@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Profanity – Settings – CleanArr{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+{% include "admin/settings/_nav.html" %}
+<form method="post" action="/admin/settings/profanity">
+  <fieldset>
+    <legend>Profanity Detection</legend>
+    <label class="field">
+      <span class="field-label">Words (one per line)</span>
+      <textarea name="profanity_words" class="select-input textarea-tall" spellcheck="false">{{ words }}</textarea>
+      <span class="field-hint">Individual words to mute. Whisper transcribes the audio, then these words are matched and silenced. One word per line, case-insensitive.</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Phrases (one per line)</span>
+      <textarea name="profanity_phrases" class="select-input textarea-med" spellcheck="false">{{ phrases }}</textarea>
+      <span class="field-hint">Multi-word phrases to mute (e.g. "oh my god"). Matched as complete phrases in the transcript. One phrase per line, case-insensitive.</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Audio padding (ms)</span>
+      <input type="number" name="profanity_padding_ms" value="{{ s.profanity_padding_ms }}" class="select-input input-narrow" min="0" max="2000">
+      <span class="field-hint">Extra milliseconds of silence added before and after each muted word. Increase if you hear the start/end of muted words bleeding through. 200ms is a good default.</span>
+    </label>
+  </fieldset>
+  <div class="form-actions"><button type="submit" class="btn btn-primary">Save</button></div>
+</form>
+{% endblock %}

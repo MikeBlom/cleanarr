@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Violence – Settings – CleanArr{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+{% include "admin/settings/_nav.html" %}
+<form method="post" action="/admin/settings/violence">
+  <fieldset>
+    <legend>Violence/Gore Detection</legend>
+    <label class="field">
+      <span class="field-label">Confidence threshold</span>
+      <input type="number" name="violence_confidence" value="{{ s.violence_confidence }}" class="select-input input-narrow" min="0" max="1" step="0.05">
+      <span class="field-hint">Higher = fewer false positives (0.5 recommended)</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Sample FPS</span>
+      <input type="number" name="violence_sample_fps" value="{{ s.violence_sample_fps }}" class="select-input input-narrow" min="0.5" max="10" step="0.5">
+      <span class="field-hint">Frames per second to scan for violence. Higher values catch more but increase processing time.</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Video padding (ms)</span>
+      <input type="number" name="violence_padding_ms" value="{{ s.violence_padding_ms }}" class="select-input input-narrow" min="0" max="5000">
+      <span class="field-hint">Extra milliseconds of video blacked out before and after each detected scene.</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Scene merge gap (ms)</span>
+      <input type="number" name="violence_scene_merge_gap_ms" value="{{ s.violence_scene_merge_gap_ms }}" class="select-input input-narrow" min="0" max="30000" step="500">
+      <span class="field-hint">Bridge detections within this gap into one continuous blackout.</span>
+    </label>
+    <div class="field">
+      <span class="field-label">Categories to detect</span>
+      <div class="checkbox-group">
+        {% set all_viol_cats = [
+          ("GORE_BLOODSHED", "Gore / bloodshed"),
+          ("VIOLENCE_FIGHTING", "Violence / fighting"),
+        ] %}
+        {% for cat_id, cat_label in all_viol_cats %}
+        <label><input type="checkbox" name="violence_categories" value="{{ cat_id }}" {% if cat_id in violence_categories %}checked{% endif %}> {{ cat_label }}</label>
+        {% endfor %}
+      </div>
+      <span class="field-hint">Select which types of violence to detect. Unchecked categories will be ignored.</span>
+    </div>
+    <div class="field">
+      <span class="field-label">Detectors</span>
+      <div class="checkbox-group">
+        {% set all_viol_dets = [("siglip_violence", '<a href="https://huggingface.co/google/siglip-base-patch16-224" target="_blank">SigLIP</a> Violence (multi-label)'), ("vit_violence", "ViT Violence (binary)")] %}
+        {% set enabled_viol_dets = s.violence_detectors | from_json if s.violence_detectors else ["siglip_violence"] %}
+        {% for det_id, det_label in all_viol_dets %}
+        <label><input type="checkbox" name="violence_detectors" value="{{ det_id }}" {% if det_id in enabled_viol_dets %}checked{% endif %}> {{ det_label|safe }}</label>
+        {% endfor %}
+      </div>
+      <span class="field-hint">Select which detection models to run. SigLIP classifies multiple violence types; ViT is a simpler binary (violent/not) classifier. Multiple models vote via the ensemble strategy.</span>
+    </div>
+    <label class="field">
+      <span class="field-label">Ensemble strategy</span>
+      <select name="violence_ensemble_strategy" class="select-input">
+        {% for val, lbl in [("weighted_average", "Weighted average"), ("unanimous", "Unanimous"), ("any", "Any detector")] %}
+        <option value="{{ val }}" {% if s.violence_ensemble_strategy == val %}selected{% endif %}>{{ lbl }}</option>
+        {% endfor %}
+      </select>
+      <span class="field-hint">How multiple detectors' scores are combined. "Weighted average" blends scores, "Unanimous" requires all to agree, "Any" triggers on a single detector.</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Frame extraction mode</span>
+      <select name="violence_extraction_mode" class="select-input">
+        {% for val, lbl in [("fixed_fps", "Fixed FPS"), ("keyframe", "Keyframe (scene change)"), ("auto", "Auto")] %}
+        <option value="{{ val }}" {% if s.violence_extraction_mode == val %}selected{% endif %}>{{ lbl }}</option>
+        {% endfor %}
+      </select>
+      <span class="field-hint">How frames are extracted for analysis. Fixed FPS samples at a constant rate; Keyframe detects scene changes (fewer frames, faster); Auto uses keyframe for longer videos.</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Temporal consistency filter</span>
+      <input type="checkbox" name="violence_temporal_enabled" value="true" {% if s.violence_temporal_enabled == "true" %}checked{% endif %}>
+      <span class="field-hint">Suppress isolated single-frame false positives using a sliding window.</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Temporal window size</span>
+      <input type="number" name="violence_temporal_window" value="{{ s.violence_temporal_window }}" class="select-input input-narrow" min="3" max="15" step="2">
+      <span class="field-hint">Number of frames in the sliding window (odd values recommended).</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Temporal min flagged</span>
+      <input type="number" name="violence_temporal_min_flagged" value="{{ s.violence_temporal_min_flagged }}" class="select-input input-narrow" min="1" max="15">
+      <span class="field-hint">Minimum flagged frames within the window required to keep a detection. Lower = more sensitive, higher = fewer false positives.</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Device</span>
+      <select name="violence_device" class="select-input">
+        {% for val, lbl in [("auto", "Auto"), ("cpu", "CPU"), ("cuda", "CUDA (GPU)")] %}
+        <option value="{{ val }}" {% if s.violence_device == val %}selected{% endif %}>{{ lbl }}</option>
+        {% endfor %}
+      </select>
+      <span class="field-hint">Device for ML inference. Auto detects GPU availability. Use CUDA if you have an NVIDIA GPU for much faster processing.</span>
+    </label>
+  </fieldset>
+  <div class="form-actions"><button type="submit" class="btn btn-primary">Save</button></div>
+</form>
+{% endblock %}

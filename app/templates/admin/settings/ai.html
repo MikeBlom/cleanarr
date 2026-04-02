@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}AI Advisor – Settings – CleanArr{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+{% include "admin/settings/_nav.html" %}
+<form method="post" action="/admin/settings/ai">
+  <fieldset>
+    <legend>AI Content Advisor (Ollama)</legend>
+    <label class="field">
+      <span class="field-label">Enable AI advisor</span>
+      <input type="checkbox" name="ai_advisor_enabled" value="true" {% if s.ai_advisor_enabled == "true" %}checked{% endif %}>
+      <span class="field-hint">When enabled, CleanArr sends IMDB parental guide data to a local Ollama LLM, which suggests whether nudity/violence/profanity filters should be enabled for each title. Requires Ollama running locally.</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Ollama URL</span>
+      <input type="text" name="ollama_url" value="{{ s.ollama_url }}" class="select-input" placeholder="http://localhost:11434">
+      <span class="field-hint">API endpoint for your <a href="https://ollama.com/" target="_blank">Ollama</a> instance. Default http://localhost:11434 works if Ollama runs on the same machine.</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Ollama Model</span>
+      <input type="text" name="ollama_model" value="{{ s.ollama_model }}" class="select-input" placeholder="llama3.2">
+      <span class="field-hint">Model must be pulled in Ollama first (e.g. ollama pull llama3.2). <a href="https://ollama.com/library" target="_blank">Browse available models</a>.</span>
+    </label>
+  </fieldset>
+  <div class="form-actions"><button type="submit" class="btn btn-primary">Save</button></div>
+</form>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Plex – Settings – CleanArr{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+{% include "admin/settings/_nav.html" %}
+<form method="post" action="/admin/settings/plex">
+  <fieldset>
+    <legend>Plex Connection</legend>
+    <label class="field">
+      <span class="field-label">Server URL</span>
+      <input type="text" name="plex_server_url" value="{{ s.plex_server_url }}" class="select-input" placeholder="http://localhost:32400">
+      <span class="field-hint">URL of your Plex Media Server. Find this in <a href="https://support.plex.tv/articles/200289506-remote-access/" target="_blank">Plex Settings &gt; Network</a> &gt; Custom server access URLs, or use http://localhost:32400 if Plex runs on the same machine.</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Admin Token</span>
+      <input type="password" name="plex_admin_token" value="{{ s.plex_admin_token }}" class="select-input" autocomplete="off">
+      <span class="field-hint">Your Plex authentication token. <a href="https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/" target="_blank">Find it</a> by opening any media item in Plex Web, clicking "Get Info" &gt; "View XML", and copying the X-Plex-Token parameter from the URL.</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Client ID</span>
+      <input type="text" name="plex_client_id" value="{{ s.plex_client_id }}" class="select-input">
+      <span class="field-hint">A unique identifier for CleanArr's Plex OAuth integration. The default works fine — only change this if you run multiple CleanArr instances.</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Admin Plex User IDs</span>
+      <input type="text" name="plex_admin_plex_ids" value="{{ s.plex_admin_plex_ids }}" class="select-input" placeholder="comma-separated">
+      <span class="field-hint">Plex user IDs that bypass the approval queue and are auto-promoted to admin on first login. Find your Plex user ID at <a href="https://support.plex.tv/articles/203948776-managed-users/" target="_blank">plex.tv/users</a> — it's the numeric ID in the URL when viewing your account.</span>
+    </label>
+  </fieldset>
+  <div class="form-actions"><button type="submit" class="btn btn-primary">Save</button></div>
+</form>
+{% endblock %}

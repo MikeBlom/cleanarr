@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Nudity – Settings – CleanArr{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+{% include "admin/settings/_nav.html" %}
+<form method="post" action="/admin/settings/nudity">
+  <fieldset>
+    <legend>Nudity Detection</legend>
+    <label class="field">
+      <span class="field-label">Confidence threshold</span>
+      <input type="number" name="nudity_confidence" value="{{ s.nudity_confidence }}" class="select-input input-narrow" min="0" max="1" step="0.05">
+      <span class="field-hint">Higher = fewer false positives (0.7 recommended)</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Sample FPS</span>
+      <input type="number" name="nudity_sample_fps" value="{{ s.nudity_sample_fps }}" class="select-input input-narrow" min="0.5" max="10" step="0.5">
+      <span class="field-hint">Frames per second to scan (higher = slower but more thorough)</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Video padding (ms)</span>
+      <input type="number" name="nudity_padding_ms" value="{{ s.nudity_padding_ms }}" class="select-input input-narrow" min="0" max="5000">
+      <span class="field-hint">Extra milliseconds of video blacked out before and after each detected scene.</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Scene merge gap (ms)</span>
+      <input type="number" name="nudity_scene_merge_gap_ms" value="{{ s.nudity_scene_merge_gap_ms }}" class="select-input input-narrow" min="0" max="30000" step="500">
+      <span class="field-hint">Bridge detections within this gap into one continuous blackout (5000 = 5s recommended)</span>
+    </label>
+    <div class="field">
+      <span class="field-label">Categories to detect</span>
+      <div class="checkbox-group">
+        {% set all_cats = [
+          ("FEMALE_BREAST_EXPOSED", "Female breast exposed"),
+          ("FEMALE_GENITALIA_EXPOSED", "Female genitalia exposed"),
+          ("MALE_GENITALIA_EXPOSED", "Male genitalia exposed"),
+          ("ANUS_EXPOSED", "Anus exposed"),
+          ("BUTTOCKS_EXPOSED", "Buttocks exposed"),
+        ] %}
+        {% for cat_id, cat_label in all_cats %}
+        <label><input type="checkbox" name="nudity_categories" value="{{ cat_id }}" {% if cat_id in categories %}checked{% endif %}> {{ cat_label }}</label>
+        {% endfor %}
+      </div>
+      <span class="field-hint">Select which types of nudity to detect and black out. Unchecked categories will be ignored even if the model detects them.</span>
+    </div>
+    <div class="field">
+      <span class="field-label">Detectors</span>
+      <div class="checkbox-group">
+        {% set all_dets = [("nudenet", '<a href="https://github.com/notAI-tech/NudeNet" target="_blank">NudeNet</a> (body-part localization)'), ("vit_nsfw", "ViT NSFW (image classification)")] %}
+        {% set enabled_dets = s.nudity_detectors | from_json if s.nudity_detectors else ["nudenet"] %}
+        {% for det_id, det_label in all_dets %}
+        <label><input type="checkbox" name="nudity_detectors" value="{{ det_id }}" {% if det_id in enabled_dets %}checked{% endif %}> {{ det_label|safe }}</label>
+        {% endfor %}
+      </div>
+      <span class="field-hint">Select which detection models to run. Multiple models vote together via the ensemble strategy.</span>
+    </div>
+    <label class="field">
+      <span class="field-label">Ensemble strategy</span>
+      <select name="nudity_ensemble_strategy" class="select-input">
+        {% for val, lbl in [("weighted_average", "Weighted average"), ("unanimous", "Unanimous"), ("any", "Any detector")] %}
+        <option value="{{ val }}" {% if s.nudity_ensemble_strategy == val %}selected{% endif %}>{{ lbl }}</option>
+        {% endfor %}
+      </select>
+      <span class="field-hint">How scores from multiple detectors are combined. "Weighted average" blends scores (balanced), "Unanimous" requires all detectors to flag a frame (fewest false positives), "Any" flags when any single detector triggers (most aggressive).</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Frame extraction mode</span>
+      <select name="nudity_extraction_mode" class="select-input">
+        {% for val, lbl in [("fixed_fps", "Fixed FPS"), ("keyframe", "Keyframe (scene change)"), ("auto", "Auto (keyframe for long videos)")] %}
+        <option value="{{ val }}" {% if s.nudity_extraction_mode == val %}selected{% endif %}>{{ lbl }}</option>
+        {% endfor %}
+      </select>
+      <span class="field-hint">Keyframe mode extracts fewer frames by detecting scene changes</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Temporal consistency filter</span>
+      <input type="checkbox" name="nudity_temporal_enabled" value="true" {% if s.nudity_temporal_enabled == "true" %}checked{% endif %}>
+      <span class="field-hint">Suppress isolated single-frame false positives using a sliding window</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Temporal window size</span>
+      <input type="number" name="nudity_temporal_window" value="{{ s.nudity_temporal_window }}" class="select-input input-narrow" min="3" max="15" step="2">
+      <span class="field-hint">Number of frames in sliding window (odd recommended)</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Temporal min flagged</span>
+      <input type="number" name="nudity_temporal_min_flagged" value="{{ s.nudity_temporal_min_flagged }}" class="select-input input-narrow" min="1" max="15">
+      <span class="field-hint">Minimum flagged frames in window to keep a detection</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Device</span>
+      <select name="nudity_device" class="select-input">
+        {% for val, lbl in [("auto", "Auto"), ("cpu", "CPU"), ("cuda", "CUDA (GPU)")] %}
+        <option value="{{ val }}" {% if s.nudity_device == val %}selected{% endif %}>{{ lbl }}</option>
+        {% endfor %}
+      </select>
+      <span class="field-hint">Device for ML models (auto will use GPU if available)</span>
+    </label>
+  </fieldset>
+  <div class="form-actions"><button type="submit" class="btn btn-primary">Save</button></div>
+</form>
+{% endblock %}

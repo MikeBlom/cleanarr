@@ -227,6 +227,12 @@ a:hover { text-decoration: underline; }
 }
 .sidebar-item__text { overflow: hidden; }
 
+.sidebar-item--sub {
+  padding-left: 2rem;
+  font-size: 0.85rem;
+}
+.page-sidebar--collapsed .sidebar-item--sub { padding-left: 0; }
+
 .sidebar-section {
   padding: 1rem 1.25rem 0.4rem;
   font-size: 0.7rem;
@@ -680,17 +686,7 @@ h2 { font-size: 1.2rem; margin: 1.5rem 0 0.75rem; }
 th.sortable:hover { color: var(--brand-light); }
 .sort-arrow { font-size: 0.75rem; }
 
-/* ── Settings anchor nav ───────────────────────────────────────────── */
-.settings-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-bottom: 1.25rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--border);
-}
-.settings-nav .btn { font-size: 0.8rem; }
-.settings-nav .btn:hover { background: var(--brand); color: var(--text-on-accent); border-color: var(--brand); }
+/* (settings subnav moved to sidebar) */
 
 /* ── Responsive ────────────────────────────────────────────────────── */
 
