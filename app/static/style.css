@@ -2,7 +2,7 @@
 :root {
   /* Brand */
   --brand: #6B2D60;
-  --brand-light: #8a3d7c;
+  --brand-light: #c084b8;
   --brand-dark: #52224a;
 
   /* Layout */
@@ -19,7 +19,7 @@
   --border: #363856;
   --text: #e0e0e8;
   --text-muted: #8888a8;
-  --accent: var(--brand-light);
+  --accent: #c084b8;
   --danger: #c0392b;
   --success: #27ae60;
   --running: #2980b9;
