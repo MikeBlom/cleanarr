@@ -6,6 +6,8 @@
   <p>Sign in to request clean conversions.</p>
   {% if request.query_params.get("error") == "invalid" %}
   <div class="alert alert-error">Invalid username or password.</div>
+  {% elif request.query_params.get("error") == "not_invited" %}
+  <div class="alert alert-error">You are not invited to access this service. Contact the server administrator to request access.</div>
   {% elif request.query_params.get("error") %}
   <div class="alert alert-error">Authentication failed. Please try again.</div>
   {% endif %}

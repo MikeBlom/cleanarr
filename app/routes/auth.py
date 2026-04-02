@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from ..auth.password import hash_password, verify_password
-from ..auth.plex import create_pin, fetch_user_info, plex_auth_url, poll_pin
+from ..auth.plex import create_pin, fetch_server_users, fetch_user_info, plex_auth_url, poll_pin
 from ..auth.sessions import create_session, destroy_session, set_flash
 from ..config import settings
 from ..database import SessionLocal
@@ -153,6 +153,21 @@ async def plex_callback(
 
     user = db.query(User).filter(User.plex_id == plex_id).first()
     is_admin = plex_id in settings.admin_plex_ids
+
+    # For new users: verify they're a member of the Plex server (unless admin or invited)
+    if user is None and not is_admin and not invited:
+        from .. import app_settings as _as
+        server_url = _as.get(db, "plex_server_url")
+        admin_token = _as.get(db, "plex_admin_token")
+        try:
+            server_users = fetch_server_users(server_url, admin_token)
+            server_plex_ids = {u["id"] for u in server_users}
+        except Exception:
+            server_plex_ids = set()
+        if plex_id not in server_plex_ids:
+            redirect = RedirectResponse("/login?error=not_invited", status_code=302)
+            redirect.delete_cookie("plex_pin_id")
+            return redirect
 
     if user is None:
         user = User(
