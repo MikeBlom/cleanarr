@@ -191,6 +191,12 @@ _DEFAULTS: dict[str, tuple[str, str]] = {
         "true",
         "Enable AI evaluation of IMDB data to auto-set filter defaults",
     ),
+    # Email (SMTP)
+    "smtp_host": ("", "SMTP server hostname (e.g. smtp.gmail.com)"),
+    "smtp_port": ("587", "SMTP server port"),
+    "smtp_user": ("", "SMTP login username"),
+    "smtp_password": ("", "SMTP login password or app password"),
+    "smtp_from": ("", "From address for outgoing emails"),
     # Notifications
     "notification_webhook_url": (
         "",

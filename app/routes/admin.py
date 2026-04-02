@@ -156,8 +156,8 @@ async def bulk_user_action(
             )
             db.add(inv)
             invite_url = f"{cfg.BASE_URL}/invite/{token}"
-            if is_email_configured():
-                send_invite_email(target.email, invite_url)
+            if is_email_configured(db):
+                send_invite_email(target.email, invite_url, db=db)
             invited += 1
         db.commit()
         redirect = RedirectResponse("/admin/users", status_code=303)
@@ -394,8 +394,8 @@ async def invite_user(
     invite_url = f"{cfg.BASE_URL}/invite/{token}"
     redirect = RedirectResponse("/admin/users", status_code=303)
 
-    if is_email_configured():
-        if send_invite_email(email.strip(), invite_url):
+    if is_email_configured(db):
+        if send_invite_email(email.strip(), invite_url, db=db):
             set_flash(redirect, f"Invite sent to {email}.", "success")
         else:
             set_flash(
@@ -534,8 +534,38 @@ _SETTINGS_SECTIONS = (
     "nudity",
     "violence",
     "ai",
+    "email",
     "notifications",
 )
+
+
+@router.post("/settings/email/test")
+async def test_email(
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    from ..email import is_email_configured, send_notification_email
+
+    redirect = RedirectResponse("/admin/settings/email?saved=1", status_code=303)
+    if not admin.email:
+        set_flash(redirect, "No email address on your account to send to.", "error")
+        return redirect
+    if not is_email_configured(db):
+        set_flash(redirect, "SMTP is not configured. Save settings first.", "error")
+        return redirect
+    ok = send_notification_email(
+        admin.email,
+        "CleanArr test email",
+        "This is a test email from CleanArr. If you received this, SMTP is working.",
+        db=db,
+    )
+    if ok:
+        set_flash(redirect, f"Test email sent to {admin.email}.", "success")
+    else:
+        set_flash(
+            redirect, "Failed to send test email. Check your SMTP settings.", "error"
+        )
+    return redirect
 
 
 @router.get("/settings")
@@ -711,6 +741,16 @@ async def save_settings_section(
             "true" if form.get("ai_advisor_enabled") else "false",
         )
         for key in ("ollama_url", "ollama_model"):
+            app_settings.put(db, key, str(form.get(key, "")).strip())
+
+    elif section == "email":
+        for key in (
+            "smtp_host",
+            "smtp_port",
+            "smtp_user",
+            "smtp_password",
+            "smtp_from",
+        ):
             app_settings.put(db, key, str(form.get(key, "")).strip())
 
     elif section == "notifications":

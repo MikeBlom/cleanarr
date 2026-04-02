@@ -48,7 +48,7 @@ def notify_request_status_change(
         _send_inapp(db, user, request, title, message)
 
     if user.notify_email and user.email:
-        send_notification_email(user.email, f"CleanArr: {title}", message)
+        send_notification_email(user.email, f"CleanArr: {title}", message, db=db)
 
     webhook_fmt = app_settings.get(db, "notification_webhook_format")
 
