@@ -19,11 +19,11 @@
     <thead>
       <tr>
         {% if hub.type in ("movie", "show") %}
-        <th>Poster</th><th>Title</th><th>Year</th>
+        <th>Poster</th><th class="sortable">Title</th><th class="sortable">Year</th>
         {% elif hub.type == "episode" %}
-        <th>Episode</th><th>Show</th><th>Air Date</th>
+        <th class="sortable">Episode</th><th class="sortable">Show</th><th class="sortable">Air Date</th>
         {% elif hub.type == "season" %}
-        <th>Season</th><th>Show</th><th>Episodes</th>
+        <th class="sortable">Season</th><th class="sortable">Show</th><th class="sortable">Episodes</th>
         {% endif %}
       </tr>
     </thead>

@@ -28,13 +28,13 @@
     <thead>
       <tr>
         <th style="width:2rem"><input type="checkbox" id="select-all"></th>
-        <th class="sortable" data-col="0">Username <span class="sort-arrow"></span></th>
-        <th class="sortable" data-col="1">Auth <span class="sort-arrow"></span></th>
+        <th class="sortable">Username</th>
+        <th class="sortable">Auth</th>
         <th>Plex ID</th>
-        <th class="sortable" data-col="3">Email <span class="sort-arrow"></span></th>
-        <th class="sortable" data-col="4">Admin <span class="sort-arrow"></span></th>
-        <th class="sortable" data-col="5">Approved <span class="sort-arrow"></span></th>
-        <th class="sortable" data-col="6">Last Login <span class="sort-arrow"></span></th>
+        <th class="sortable">Email</th>
+        <th class="sortable">Admin</th>
+        <th class="sortable">Approved</th>
+        <th class="sortable">Last Login</th>
         <th>Actions</th>
       </tr>
     </thead>
@@ -92,10 +92,10 @@
 <table class="data-table">
   <thead>
     <tr>
-      <th>Email</th>
-      <th>Invited</th>
-      <th>Expires</th>
-      <th>Status</th>
+      <th class="sortable">Email</th>
+      <th class="sortable">Invited</th>
+      <th class="sortable">Expires</th>
+      <th class="sortable">Status</th>
     </tr>
   </thead>
   <tbody>
@@ -121,54 +121,21 @@
 
 <script>
 (function(){
-  // Bulk selection
   var selectAll = document.getElementById('select-all');
   var bulkBar = document.getElementById('bulk-bar');
   var bulkCount = document.getElementById('bulk-count');
   var checkboxes = document.querySelectorAll('.user-cb');
-
   function updateBulk(){
     var checked = document.querySelectorAll('.user-cb:checked').length;
     bulkCount.textContent = checked;
     if(checked > 0) bulkBar.classList.remove('hidden');
     else bulkBar.classList.add('hidden');
   }
-
   selectAll.addEventListener('change', function(){
     checkboxes.forEach(function(cb){ cb.checked = selectAll.checked; });
     updateBulk();
   });
   checkboxes.forEach(function(cb){ cb.addEventListener('change', updateBulk); });
-
-  // Column sorting
-  var table = document.getElementById('users-table');
-  var tbody = table.querySelector('tbody');
-  var headers = table.querySelectorAll('th.sortable');
-  var sortCol = -1, sortAsc = true;
-
-  headers.forEach(function(th){
-    th.style.cursor = 'pointer';
-    th.addEventListener('click', function(){
-      var col = parseInt(th.dataset.col);
-      if(sortCol === col) sortAsc = !sortAsc;
-      else { sortCol = col; sortAsc = true; }
-
-      // Update arrows
-      headers.forEach(function(h){ h.querySelector('.sort-arrow').textContent = ''; });
-      th.querySelector('.sort-arrow').textContent = sortAsc ? ' ▲' : ' ▼';
-
-      var rows = Array.from(tbody.querySelectorAll('tr'));
-      rows.sort(function(a, b){
-        // +1 because first column is checkbox
-        var cellA = a.cells[col + 1].textContent.trim().toLowerCase();
-        var cellB = b.cells[col + 1].textContent.trim().toLowerCase();
-        if(cellA < cellB) return sortAsc ? -1 : 1;
-        if(cellA > cellB) return sortAsc ? 1 : -1;
-        return 0;
-      });
-      rows.forEach(function(r){ tbody.appendChild(r); });
-    });
-  });
 })();
 </script>
 {% endblock %}
