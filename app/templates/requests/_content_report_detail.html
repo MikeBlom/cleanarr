@@ -1,0 +1,23 @@
+<h4>{{ filter_type | capitalize }} removed from "{{ conv_request.title }}"</h4>
+{% if entries %}
+<table class="data-table">
+  <thead>
+    <tr>
+      <th>Time</th>
+      <th>Description</th>
+      {% if entries | selectattr('job_title') | list %}<th>File</th>{% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for entry in entries %}
+    <tr>
+      <td>{{ entry.time }}</td>
+      <td>{{ entry.description }}</td>
+      {% if entries | selectattr('job_title') | list %}<td>{{ entry.job_title }}</td>{% endif %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="muted">No {{ filter_type }} items found.</p>
+{% endif %}

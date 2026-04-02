@@ -842,3 +842,49 @@ th.sortable:hover { color: var(--brand-light); }
 @media (max-width: 380px) {
   .media-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ── Violence badge ────────────────────────────────────────────────── */
+.badge-violence { background: var(--danger); color: var(--text-on-color); }
+
+/* ── Content report count links ────────────────────────────────────── */
+.report-count {
+  font-weight: 600;
+  text-decoration: none;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.report-count:hover { text-decoration: underline; }
+.report-count--profanity { color: var(--badge-profanity); }
+.report-count--nudity { color: var(--badge-nudity); }
+.report-count--violence { color: var(--danger); }
+
+/* ── Content report modal ──────────────────────────────────────────── */
+.report-modal {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.5rem;
+  max-width: 700px;
+  width: 90vw;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.report-modal::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+.report-modal__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+.report-modal__close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+.report-modal__close:hover { color: var(--text); }

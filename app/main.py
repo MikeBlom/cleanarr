@@ -58,9 +58,16 @@ async def favicon():
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
+    import json as _json
+    from sqlalchemy.orm import joinedload
     from .deps import get_current_user
     from .database import SessionLocal
-    from .models import User
+    from .models import (
+        ConversionRequest,
+        JobStatus,
+        RequestStatus,
+        User,
+    )
 
     db = SessionLocal()
     try:
@@ -68,13 +75,50 @@ async def index(request: Request):
         if not has_users:
             return RedirectResponse("/setup", status_code=302)
         user = get_current_user(request, db)
+        if user is None:
+            return RedirectResponse("/login", status_code=302)
+        if not user.is_approved:
+            return RedirectResponse("/pending", status_code=302)
+
+        completed_requests = (
+            db.query(ConversionRequest)
+            .options(joinedload(ConversionRequest.jobs))
+            .filter(
+                ConversionRequest.status.in_(
+                    [RequestStatus.complete, RequestStatus.partially_complete]
+                )
+            )
+            .order_by(ConversionRequest.updated_at.desc())
+            .all()
+        )
+
+        cleaned_movies = []
+        for req in completed_requests:
+            counts = {"profanity": 0, "nudity": 0, "violence": 0}
+            for job in req.jobs:
+                if job.status != JobStatus.completed or not job.content_report:
+                    continue
+                try:
+                    report = _json.loads(job.content_report)
+                except Exception:
+                    continue
+                for entry in report:
+                    entry_type = entry.get("type", "")
+                    if entry_type in counts:
+                        counts[entry_type] += 1
+            cleaned_movies.append(
+                {
+                    "request_id": req.id,
+                    "title": req.title,
+                    "profanity_count": counts["profanity"],
+                    "nudity_count": counts["nudity"],
+                    "violence_count": counts["violence"],
+                }
+            )
+
+        return templates.TemplateResponse(
+            "dashboard.html",
+            {"request": request, "user": user, "cleaned_movies": cleaned_movies},
+        )
     finally:
         db.close()
-
-    if user is None:
-        return RedirectResponse("/login", status_code=302)
-    if not user.is_approved:
-        return RedirectResponse("/pending", status_code=302)
-    return templates.TemplateResponse(
-        "dashboard.html", {"request": request, "user": user}
-    )
