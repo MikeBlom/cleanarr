@@ -36,6 +36,11 @@ app.include_router(jobs.router)
 app.include_router(admin.router)
 
 
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return RedirectResponse("/static/favicon.ico", status_code=301)
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     from .deps import get_current_user
