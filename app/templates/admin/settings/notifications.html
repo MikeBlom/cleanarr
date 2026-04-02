@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Notifications – Settings – CleanArr{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+{% include "admin/settings/_nav.html" %}
+<form method="post" action="/admin/settings/notifications">
+  <fieldset>
+    <legend>Notification Triggers</legend>
+    <label class="field">
+      <span class="field-label">Notify on request completed</span>
+      <input type="checkbox" name="notification_on_complete" value="true" {% if s.notification_on_complete == "true" %}checked{% endif %}>
+    </label>
+    <label class="field">
+      <span class="field-label">Notify on request failed</span>
+      <input type="checkbox" name="notification_on_failed" value="true" {% if s.notification_on_failed == "true" %}checked{% endif %}>
+    </label>
+    <label class="field">
+      <span class="field-label">Notify on request partially completed</span>
+      <input type="checkbox" name="notification_on_partial" value="true" {% if s.notification_on_partial == "true" %}checked{% endif %}>
+    </label>
+  </fieldset>
+  <fieldset>
+    <legend>Global Webhook</legend>
+    <span class="field-hint" style="margin-bottom:.5rem;display:block">This webhook fires for <em>all</em> users' requests, regardless of their personal settings. Useful for a shared Discord/Slack channel.</span>
+    <label class="field">
+      <span class="field-label">Webhook URL</span>
+      <input type="url" name="notification_webhook_url" value="{{ s.notification_webhook_url }}" class="select-input" placeholder="https://discord.com/api/webhooks/...">
+    </label>
+    <label class="field">
+      <span class="field-label">Webhook format</span>
+      <select name="notification_webhook_format" class="select-input">
+        <option value="discord" {% if s.notification_webhook_format == "discord" %}selected{% endif %}>Discord</option>
+        <option value="generic" {% if s.notification_webhook_format == "generic" %}selected{% endif %}>Generic JSON</option>
+      </select>
+      <span class="field-hint">Discord: {"content": "..."} — Generic: {"title": "...", "message": "..."}</span>
+    </label>
+  </fieldset>
+  <div class="form-actions"><button type="submit" class="btn btn-primary">Save</button></div>
+</form>
+{% endblock %}

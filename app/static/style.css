@@ -162,6 +162,39 @@ a:hover { text-decoration: underline; }
 }
 .page-header__theme-toggle:hover { color: #fff; background: rgba(255,255,255,0.1); }
 
+.page-header__notif {
+  position: relative;
+  color: rgba(255,255,255,0.8);
+  font-size: 1rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 4px;
+  text-decoration: none;
+}
+.page-header__notif:hover { color: #fff; background: rgba(255,255,255,0.1); }
+
+.notif-badge {
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  background: var(--color-danger, #e74c3c);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  line-height: 16px;
+  text-align: center;
+  border-radius: 8px;
+  padding: 0 4px;
+}
+
+.card-list { display: flex; flex-direction: column; gap: 0.75rem; }
+.card { border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem 1rem; }
+.card--unread { border-left: 3px solid var(--color-primary, #3498db); background: var(--bg-subtle, rgba(52,152,219,0.05)); }
+.card__header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; }
+.card__body { color: var(--text-muted); font-size: 0.9em; margin-bottom: 0.5rem; white-space: pre-line; }
+.card__actions { display: flex; gap: 0.75rem; font-size: 0.85em; }
+
 .page-header__user {
   display: flex;
   align-items: center;

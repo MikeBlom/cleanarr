@@ -534,6 +534,7 @@ _SETTINGS_SECTIONS = (
     "nudity",
     "violence",
     "ai",
+    "notifications",
 )
 
 
@@ -712,6 +713,24 @@ async def save_settings_section(
         for key in ("ollama_url", "ollama_model"):
             app_settings.put(db, key, str(form.get(key, "")).strip())
 
+    elif section == "notifications":
+        app_settings.put(
+            db,
+            "notification_webhook_url",
+            str(form.get("notification_webhook_url", "")).strip(),
+        )
+        app_settings.put(
+            db,
+            "notification_webhook_format",
+            str(form.get("notification_webhook_format", "discord")).strip(),
+        )
+        for key in (
+            "notification_on_complete",
+            "notification_on_failed",
+            "notification_on_partial",
+        ):
+            app_settings.put(db, key, "true" if form.get(key) else "false")
+
     db.commit()
 
     redirect = RedirectResponse(f"/admin/settings/{section}?saved=1", status_code=303)
@@ -723,6 +742,7 @@ def _rollup_request(db: Session, request_id: int) -> None:
     req = db.query(ConversionRequest).filter(ConversionRequest.id == request_id).first()
     if not req:
         return
+    old_status = req.status
     statuses = {j.status for j in req.jobs}
     if JobStatus.running in statuses or JobStatus.queued in statuses:
         req.status = RequestStatus.queued
@@ -733,3 +753,15 @@ def _rollup_request(db: Session, request_id: int) -> None:
     elif all(s in (JobStatus.failed, JobStatus.skipped) for s in statuses):
         req.status = RequestStatus.failed
     db.commit()
+
+    if req.status != old_status and req.status in (
+        RequestStatus.complete,
+        RequestStatus.failed,
+        RequestStatus.partially_complete,
+    ):
+        try:
+            from ..notifications import notify_request_status_change
+
+            notify_request_status_change(db, req, req.status)
+        except Exception:
+            pass

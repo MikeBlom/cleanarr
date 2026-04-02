@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Notifications – CleanArr{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem">
+  <h1 style="margin:0">Notifications</h1>
+  <a href="/notifications/preferences" class="btn btn-sm">Preferences</a>
+  {% if notifications %}
+  <form method="post" action="/notifications/read-all" style="margin-left:auto">
+    <button type="submit" class="btn btn-sm">Mark all read</button>
+  </form>
+  {% endif %}
+</div>
+
+{% if not notifications %}
+<p class="muted">No notifications yet.</p>
+{% else %}
+<div class="card-list">
+  {% for n in notifications %}
+  <div class="card {% if not n.is_read %}card--unread{% endif %}">
+    <div class="card__header">
+      <strong>{{ n.title }}</strong>
+      <span class="muted" style="margin-left:auto;font-size:.85em">{{ n.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+    </div>
+    <div class="card__body">{{ n.message }}</div>
+    <div class="card__actions">
+      {% if n.request_id %}<a href="/requests/{{ n.request_id }}">View request</a>{% endif %}
+      {% if not n.is_read %}
+      <form method="post" action="/notifications/{{ n.id }}/read" style="display:inline">
+        <button type="submit" class="btn btn-sm">Mark read</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

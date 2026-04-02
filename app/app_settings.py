@@ -191,6 +191,21 @@ _DEFAULTS: dict[str, tuple[str, str]] = {
         "true",
         "Enable AI evaluation of IMDB data to auto-set filter defaults",
     ),
+    # Notifications
+    "notification_webhook_url": (
+        "",
+        "Global webhook URL for all request notifications (Discord/Slack/generic)",
+    ),
+    "notification_webhook_format": (
+        "discord",
+        "Webhook payload format: discord or generic",
+    ),
+    "notification_on_complete": ("true", "Send notifications when requests complete"),
+    "notification_on_failed": ("true", "Send notifications when requests fail"),
+    "notification_on_partial": (
+        "false",
+        "Send notifications when requests partially complete",
+    ),
 }
 
 
