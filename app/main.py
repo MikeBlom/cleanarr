@@ -63,7 +63,6 @@ async def index(request: Request):
     from .deps import get_current_user
     from .database import SessionLocal
     from .models import (
-        ConversionJob,
         ConversionRequest,
         JobStatus,
         RequestStatus,
