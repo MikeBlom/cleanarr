@@ -18,6 +18,24 @@ jobs:
       - run: ruff check .
       - run: ruff format --check .
 
+  test:
+    runs-on: ubuntu-latest
+    needs: lint
+    env:
+      DATABASE_URL: "sqlite://"
+      WORKER_ENABLED: "false"
+      PLEX_ADMIN_TOKEN: "test-token"
+      PLEX_SERVER_URL: "http://localhost:32400"
+      ALLOWED_MEDIA_DIRS: "/mnt/media"
+      BASE_URL: "http://localhost:8765"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[test]" "passlib[bcrypt]"
+      - run: pytest tests/ -v --tb=short
+
   docker-build:
     runs-on: ubuntu-latest
     strategy:

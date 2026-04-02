@@ -28,6 +28,16 @@ dependencies = [
     "itsdangerous==2.2.0",
 ]
 
+[project.optional-dependencies]
+test = ["pytest>=8.0"]
+
 [project.urls]
 Homepage = "https://github.com/MikeBlom/cleanarr"
 Issues = "https://github.com/MikeBlom/cleanarr/issues"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = [
+    "ignore::DeprecationWarning:passlib.*",
+    "ignore::DeprecationWarning:starlette.*",
+]
