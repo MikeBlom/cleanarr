@@ -38,6 +38,15 @@ ruff check .
 ruff format .
 ```
 
+## Running Tests
+
+```bash
+pip install -e ".[test]" "passlib[bcrypt]"
+pytest tests/ -v
+```
+
+Tests use an in-memory SQLite database and mock all external services (Plex, Ollama, SMTP). All tests should pass before submitting a PR — CI runs them automatically.
+
 ## Submitting Changes
 
 1. Fork the repository

@@ -138,9 +138,7 @@ PyTorch has experimental support for Intel GPUs via [Intel Extension for PyTorch
 ## Roadmap
 
 - Multi-provider support (Emby, Jellyfin)
-- Local authentication (username/password) as alternative to Plex OAuth
 - Notification system for completed jobs
-- User roles and permissions
 
 ## Related Projects
 
