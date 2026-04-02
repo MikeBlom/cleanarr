@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Notification Preferences – CleanArr{% endblock %}
+{% block content %}
+<h1>Notification Preferences</h1>
+
+{% if saved %}<div class="alert alert-success">Preferences saved.</div>{% endif %}
+
+<form method="post" action="/notifications/preferences">
+  <fieldset>
+    <legend>Channels</legend>
+    <label class="field">
+      <span class="field-label">In-app notifications</span>
+      <input type="checkbox" name="notify_inapp" value="true" {% if user.notify_inapp %}checked{% endif %}>
+      <span class="field-hint">Show a badge on the bell icon when requests complete.</span>
+    </label>
+    <label class="field">
+      <span class="field-label">Email notifications</span>
+      <input type="checkbox" name="notify_email" value="true" {% if user.notify_email %}checked{% endif %}>
+      {% if not user.email %}
+      <span class="field-hint" style="color:var(--color-warn)">You don't have an email address on file. Email notifications won't be sent.</span>
+      {% elif not email_configured %}
+      <span class="field-hint" style="color:var(--color-warn)">Email (SMTP) is not configured on this server.</span>
+      {% else %}
+      <span class="field-hint">Send to {{ user.email }}</span>
+      {% endif %}
+    </label>
+    <label class="field">
+      <span class="field-label">Webhook notifications</span>
+      <input type="checkbox" name="notify_webhook" value="true" {% if user.notify_webhook %}checked{% endif %}>
+    </label>
+    <label class="field">
+      <span class="field-label">Webhook URL</span>
+      <input type="url" name="webhook_url" value="{{ user.webhook_url or '' }}" class="select-input" placeholder="https://discord.com/api/webhooks/...">
+      <span class="field-hint">Your personal webhook. Supports Discord, Slack, or any service that accepts a JSON POST.</span>
+    </label>
+  </fieldset>
+  <div class="form-actions"><button type="submit" class="btn btn-primary">Save</button></div>
+</form>
+{% endblock %}

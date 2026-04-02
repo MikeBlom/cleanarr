@@ -1,4 +1,4 @@
-"""Optional email sending for invite notifications."""
+"""Optional email sending for invites and job notifications."""
 
 from __future__ import annotations
 
@@ -25,6 +25,27 @@ def send_invite_email(to: str, invite_url: str) -> bool:
     )
     msg = MIMEText(body)
     msg["Subject"] = "You're invited to CleanArr"
+    msg["From"] = settings.SMTP_FROM
+    msg["To"] = to
+
+    try:
+        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10) as server:
+            server.starttls()
+            if settings.SMTP_USER:
+                server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+            server.send_message(msg)
+        return True
+    except Exception:
+        return False
+
+
+def send_notification_email(to: str, subject: str, body: str) -> bool:
+    """Send a notification email. Returns True on success."""
+    if not is_email_configured():
+        return False
+
+    msg = MIMEText(body)
+    msg["Subject"] = subject
     msg["From"] = settings.SMTP_FROM
     msg["To"] = to
 

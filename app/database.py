@@ -134,4 +134,15 @@ def _migrate() -> None:
                 text("ALTER TABLE users ADD COLUMN password_hash VARCHAR(255)")
             )
 
+        # Notification preference columns on users
+        for col in (
+            "notify_email BOOLEAN DEFAULT 0",
+            "notify_webhook BOOLEAN DEFAULT 0",
+            "notify_inapp BOOLEAN DEFAULT 1",
+            "webhook_url VARCHAR(1024)",
+        ):
+            col_name = col.split()[0]
+            if col_name not in user_cols:
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN {col}"))
+
         conn.commit()

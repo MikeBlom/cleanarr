@@ -442,6 +442,7 @@ def _rollup_request(db, request_id: int) -> None:
     req = db.query(ConversionRequest).filter(ConversionRequest.id == request_id).first()
     if not req:
         return
+    old_status = req.status
     statuses = {j.status for j in req.jobs}
     if JobStatus.running in statuses or JobStatus.queued in statuses:
         req.status = RequestStatus.queued
@@ -452,6 +453,19 @@ def _rollup_request(db, request_id: int) -> None:
     else:
         req.status = RequestStatus.failed
     db.commit()
+
+    # Notify on terminal status transitions
+    if req.status != old_status and req.status in (
+        RequestStatus.complete,
+        RequestStatus.failed,
+        RequestStatus.partially_complete,
+    ):
+        try:
+            from .notifications import notify_request_status_change
+
+            notify_request_status_change(db, req, req.status)
+        except Exception:
+            pass  # best-effort, never break the worker
 
 
 def _is_cancelled(job_id: int) -> bool:
