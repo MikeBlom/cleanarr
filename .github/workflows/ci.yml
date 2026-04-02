@@ -32,10 +32,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
       - run: pip install -e ".[test]" "passlib[bcrypt]" "bcrypt<4.1"
       - run: pytest tests/ -v --tb=short
 
   docker-build:
+    # Only build Docker images on pushes to main, not on PRs
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     strategy:
       matrix:
