@@ -138,7 +138,6 @@ PyTorch has experimental support for Intel GPUs via [Intel Extension for PyTorch
 ## Roadmap
 
 - Multi-provider support (Emby, Jellyfin)
-- Notification system for completed jobs
 
 ## Related Projects
 

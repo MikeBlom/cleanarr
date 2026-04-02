@@ -30,9 +30,9 @@
     <button class="page-header__theme-toggle" id="theme-toggle" aria-label="Toggle theme" title="Toggle light/dark theme">
       <i class="fa-solid fa-moon" id="theme-icon"></i>
     </button>
-    <a href="/notifications" class="page-header__notif" title="Notifications"
-       hx-get="/notifications/count" hx-trigger="load, every 30s" hx-swap="innerHTML">
+    <a href="/notifications" class="page-header__notif" title="Notifications">
       <i class="fa-solid fa-bell"></i>
+      <span id="notif-count" hx-get="/notifications/count" hx-trigger="load, every 30s" hx-swap="innerHTML"></span>
     </a>
     <div class="page-header__user">
       <i class="fa-solid fa-user"></i>
