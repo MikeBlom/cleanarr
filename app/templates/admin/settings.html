@@ -4,9 +4,19 @@
 <h1>Settings</h1>
 {% if saved %}<div class="alert alert-success">Settings saved.</div>{% endif %}
 
+<div class="settings-nav">
+  <a href="#plex" class="btn btn-sm">Plex</a>
+  <a href="#paths" class="btn btn-sm">Paths</a>
+  <a href="#worker" class="btn btn-sm">Worker</a>
+  <a href="#profanity" class="btn btn-sm">Profanity</a>
+  <a href="#nudity" class="btn btn-sm">Nudity</a>
+  <a href="#violence" class="btn btn-sm">Violence</a>
+  <a href="#ai" class="btn btn-sm">AI Advisor</a>
+</div>
+
 <form method="post" action="/admin/settings">
 
-  <fieldset>
+  <fieldset id="plex">
     <legend>Plex Connection</legend>
     <label class="field">
       <span class="field-label">Server URL</span>
@@ -30,7 +40,7 @@
     </label>
   </fieldset>
 
-  <fieldset>
+  <fieldset id="paths">
     <legend>Path Mapping</legend>
     <label class="field">
       <span class="field-label">Plex path prefix (from)</span>
@@ -49,7 +59,7 @@
     </label>
   </fieldset>
 
-  <fieldset>
+  <fieldset id="worker">
     <legend>Worker</legend>
     <label class="field">
       <span class="field-label">cleanmedia binary path</span>
@@ -67,7 +77,7 @@
     </label>
   </fieldset>
 
-  <fieldset>
+  <fieldset id="profanity">
     <legend>Profanity Detection</legend>
     <label class="field">
       <span class="field-label">Words (one per line)</span>
@@ -86,7 +96,7 @@
     </label>
   </fieldset>
 
-  <fieldset>
+  <fieldset id="nudity">
     <legend>Nudity Detection</legend>
     <label class="field">
       <span class="field-label">Confidence threshold</span>
@@ -179,7 +189,7 @@
     </label>
   </fieldset>
 
-  <fieldset>
+  <fieldset id="violence">
     <legend>Violence/Gore Detection</legend>
     <label class="field">
       <span class="field-label">Confidence threshold</span>
@@ -269,7 +279,7 @@
     </label>
   </fieldset>
 
-  <fieldset>
+  <fieldset id="ai">
     <legend>AI Content Advisor (Ollama)</legend>
     <label class="field">
       <span class="field-label">Enable AI advisor</span>
