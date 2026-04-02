@@ -15,6 +15,7 @@ class PlexClient:
     def __init__(self, db=None) -> None:
         if db:
             from .. import app_settings
+
             self.base_url = app_settings.get(db, "plex_server_url").rstrip("/")
             self.token = app_settings.get(db, "plex_admin_token")
         else:
@@ -25,7 +26,9 @@ class PlexClient:
         url = f"{self.base_url}{path}"
         p = {"X-Plex-Token": self.token, **(params or {})}
         try:
-            resp = httpx.get(url, params=p, headers={"Accept": "application/json"}, timeout=15)
+            resp = httpx.get(
+                url, params=p, headers={"Accept": "application/json"}, timeout=15
+            )
             resp.raise_for_status()
             return resp.json()
         except httpx.HTTPError as exc:
@@ -35,8 +38,13 @@ class PlexClient:
         data = self._get("/library/sections")
         return data.get("MediaContainer", {}).get("Directory", [])
 
-    def library_items(self, section_id: str, offset: int = 0, limit: int = 50, sort: str | None = None) -> dict:
-        params: dict = {"X-Plex-Container-Start": offset, "X-Plex-Container-Size": limit}
+    def library_items(
+        self, section_id: str, offset: int = 0, limit: int = 50, sort: str | None = None
+    ) -> dict:
+        params: dict = {
+            "X-Plex-Container-Start": offset,
+            "X-Plex-Container-Size": limit,
+        }
         if sort:
             params["sort"] = sort
         data = self._get(f"/library/sections/{section_id}/all", params=params)
@@ -76,6 +84,7 @@ class PlexClient:
         path = raw_path
         if db:
             from .. import app_settings
+
             prefix_from = app_settings.get(db, "plex_path_prefix_from")
             prefix_to = app_settings.get(db, "plex_path_prefix_to")
             allowed_str = app_settings.get(db, "allowed_media_dirs")
@@ -86,7 +95,7 @@ class PlexClient:
             allowed_dirs = settings.allowed_media_dirs
 
         if prefix_from and path.startswith(prefix_from):
-            path = prefix_to + path[len(prefix_from):]
+            path = prefix_to + path[len(prefix_from) :]
 
         resolved = Path(path).resolve()
         allowed = [Path(d).resolve() for d in allowed_dirs]

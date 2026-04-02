@@ -19,7 +19,9 @@ def _headers() -> dict[str, str]:
 
 def create_pin() -> tuple[int, str]:
     """Create a Plex PIN. Returns (pin_id, pin_code)."""
-    resp = httpx.post(f"{PLEX_API_BASE}/pins", headers=_headers(), data={"strong": "true"})
+    resp = httpx.post(
+        f"{PLEX_API_BASE}/pins", headers=_headers(), data={"strong": "true"}
+    )
     resp.raise_for_status()
     data = resp.json()
     return data["id"], data["code"]
@@ -27,12 +29,15 @@ def create_pin() -> tuple[int, str]:
 
 def plex_auth_url(pin_code: str, callback_url: str) -> str:
     import urllib.parse
-    params = urllib.parse.urlencode({
-        "clientID": settings.PLEX_CLIENT_ID,
-        "code": pin_code,
-        "context[device][product]": settings.PLEX_CLIENT_NAME,
-        "forwardUrl": callback_url,
-    })
+
+    params = urllib.parse.urlencode(
+        {
+            "clientID": settings.PLEX_CLIENT_ID,
+            "code": pin_code,
+            "context[device][product]": settings.PLEX_CLIENT_NAME,
+            "forwardUrl": callback_url,
+        }
+    )
     return f"https://app.plex.tv/auth#?{params}"
 
 
@@ -82,11 +87,13 @@ def _fetch_plex_tv_friends(admin_token: str) -> list[dict] | None:
         for friend in data:
             plex_id = str(friend.get("id", ""))
             if plex_id and plex_id not in ("0", "1"):
-                users.append({
-                    "id": plex_id,
-                    "username": friend.get("username") or friend.get("title", ""),
-                    "email": friend.get("email", ""),
-                })
+                users.append(
+                    {
+                        "id": plex_id,
+                        "username": friend.get("username") or friend.get("title", ""),
+                        "email": friend.get("email", ""),
+                    }
+                )
         return users
     except Exception:
         return None
@@ -108,9 +115,11 @@ def _fetch_server_accounts(server_url: str, admin_token: str) -> list[dict]:
         plex_id = str(account.get("id", ""))
         name = account.get("name", "")
         if plex_id and plex_id not in ("0", "1"):
-            users.append({
-                "id": plex_id,
-                "username": name,
-                "email": account.get("email", ""),
-            })
+            users.append(
+                {
+                    "id": plex_id,
+                    "username": name,
+                    "email": account.get("email", ""),
+                }
+            )
     return users

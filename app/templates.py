@@ -11,12 +11,15 @@ from starlette.responses import Response
 class _FlashTemplates(Jinja2Templates):
     """Jinja2Templates subclass that auto-injects flash messages and clears the cookie."""
 
-    def TemplateResponse(self, name: str, context: dict[str, Any], **kwargs: Any) -> Response:
+    def TemplateResponse(
+        self, name: str, context: dict[str, Any], **kwargs: Any
+    ) -> Response:
         request: Request = context.get("request")  # type: ignore[assignment]
         if request:
             # Flash messages
             if not context.get("flash_msg"):
                 from .auth.sessions import get_flash
+
                 flash = get_flash(request)
                 if flash:
                     context["flash_msg"], context["flash_level"] = flash
@@ -28,11 +31,14 @@ class _FlashTemplates(Jinja2Templates):
                     from .deps import _get_session_user
                     from .database import SessionLocal
                     from .models import User
+
                     db = SessionLocal()
                     try:
                         real_user = _get_session_user(request, db)
                         if real_user and real_user.is_admin:
-                            target = db.query(User).filter(User.id == int(masq_id)).first()
+                            target = (
+                                db.query(User).filter(User.id == int(masq_id)).first()
+                            )
                             if target:
                                 context["masquerade_as"] = target
                                 context["real_user"] = real_user
@@ -50,9 +56,12 @@ class _FlashTemplates(Jinja2Templates):
 templates = _FlashTemplates(directory=str(Path(__file__).parent / "templates"))
 templates.env.filters["from_json"] = json.loads
 
+
 def _timestamp_date(ts: int | str) -> str:
     from datetime import datetime, timezone
+
     return datetime.fromtimestamp(int(ts), tz=timezone.utc).strftime("%Y-%m-%d")
+
 
 templates.env.filters["timestamp_date"] = _timestamp_date
 

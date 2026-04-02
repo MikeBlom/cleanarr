@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import Cookie, Depends, HTTPException, Request, status
+from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from .auth.sessions import get_session
@@ -59,9 +59,13 @@ def get_real_user(
 
 def require_user(user: User | None = Depends(get_current_user)) -> User:
     if user is None:
-        raise HTTPException(status_code=status.HTTP_302_FOUND, headers={"Location": "/login"})
+        raise HTTPException(
+            status_code=status.HTTP_302_FOUND, headers={"Location": "/login"}
+        )
     if not user.is_approved:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account pending approval.")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Account pending approval."
+        )
     return user
 
 
@@ -72,9 +76,15 @@ def require_admin(
     """Check admin status on the REAL user, not the masqueraded one."""
     user = _get_session_user(request, db)
     if user is None:
-        raise HTTPException(status_code=status.HTTP_302_FOUND, headers={"Location": "/login"})
+        raise HTTPException(
+            status_code=status.HTTP_302_FOUND, headers={"Location": "/login"}
+        )
     if not user.is_approved:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account pending approval.")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Account pending approval."
+        )
     if not user.is_admin:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required.")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required."
+        )
     return user

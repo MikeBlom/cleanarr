@@ -19,6 +19,7 @@ def _set_sqlite_pragma(dbapi_conn, connection_record):
     cursor.execute("PRAGMA synchronous=NORMAL")
     cursor.close()
 
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
@@ -28,6 +29,7 @@ class Base(DeclarativeBase):
 
 def init_db() -> None:
     from . import models  # noqa: F401 – ensure models are registered
+
     Base.metadata.create_all(bind=engine)
     _migrate()
     _seed_settings()
@@ -35,6 +37,7 @@ def init_db() -> None:
 
 def _seed_settings() -> None:
     from . import app_settings
+
     db = SessionLocal()
     try:
         app_settings.seed_defaults(db)
@@ -47,17 +50,29 @@ def _migrate() -> None:
         result = conn.execute(text("PRAGMA table_info(conversion_jobs)"))
         cols = {row[1] for row in result}
         if "content_report" not in cols:
-            conn.execute(text("ALTER TABLE conversion_jobs ADD COLUMN content_report TEXT"))
+            conn.execute(
+                text("ALTER TABLE conversion_jobs ADD COLUMN content_report TEXT")
+            )
         if "progress_json" not in cols:
-            conn.execute(text("ALTER TABLE conversion_jobs ADD COLUMN progress_json TEXT"))
+            conn.execute(
+                text("ALTER TABLE conversion_jobs ADD COLUMN progress_json TEXT")
+            )
         if "priority" not in cols:
-            conn.execute(text("ALTER TABLE conversion_jobs ADD COLUMN priority INTEGER NOT NULL DEFAULT 0"))
+            conn.execute(
+                text(
+                    "ALTER TABLE conversion_jobs ADD COLUMN priority INTEGER NOT NULL DEFAULT 0"
+                )
+            )
 
         # conversion_requests migrations
         result2 = conn.execute(text("PRAGMA table_info(conversion_requests)"))
         req_cols = {row[1] for row in result2}
         if "audio_stream_index" not in req_cols:
-            conn.execute(text("ALTER TABLE conversion_requests ADD COLUMN audio_stream_index INTEGER"))
+            conn.execute(
+                text(
+                    "ALTER TABLE conversion_requests ADD COLUMN audio_stream_index INTEGER"
+                )
+            )
         for col in (
             "profanity_extra_words_json TEXT",
             "profanity_extra_phrases_json TEXT",
@@ -93,16 +108,30 @@ def _migrate() -> None:
 
         # conversion_requests source/upload migrations
         if "source" not in req_cols:
-            conn.execute(text("ALTER TABLE conversion_requests ADD COLUMN source VARCHAR(32) NOT NULL DEFAULT 'plex'"))
+            conn.execute(
+                text(
+                    "ALTER TABLE conversion_requests ADD COLUMN source VARCHAR(32) NOT NULL DEFAULT 'plex'"
+                )
+            )
         if "original_filename" not in req_cols:
-            conn.execute(text("ALTER TABLE conversion_requests ADD COLUMN original_filename VARCHAR(512)"))
+            conn.execute(
+                text(
+                    "ALTER TABLE conversion_requests ADD COLUMN original_filename VARCHAR(512)"
+                )
+            )
 
         # users migrations
         result3 = conn.execute(text("PRAGMA table_info(users)"))
         user_cols = {row[1] for row in result3}
         if "auth_method" not in user_cols:
-            conn.execute(text("ALTER TABLE users ADD COLUMN auth_method VARCHAR(32) NOT NULL DEFAULT 'plex'"))
+            conn.execute(
+                text(
+                    "ALTER TABLE users ADD COLUMN auth_method VARCHAR(32) NOT NULL DEFAULT 'plex'"
+                )
+            )
         if "password_hash" not in user_cols:
-            conn.execute(text("ALTER TABLE users ADD COLUMN password_hash VARCHAR(255)"))
+            conn.execute(
+                text("ALTER TABLE users ADD COLUMN password_hash VARCHAR(255)")
+            )
 
         conn.commit()

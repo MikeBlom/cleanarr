@@ -25,8 +25,9 @@ router = APIRouter()
 def _build_output_path(input_path: str) -> str:
     import re
     from pathlib import Path
+
     p = Path(input_path)
-    clean_stem = re.sub(r'\s*\{edition-[^}]+\}', '', p.stem).rstrip()
+    clean_stem = re.sub(r"\s*\{edition-[^}]+\}", "", p.stem).rstrip()
     return str(p.parent / (clean_stem + " {edition-Clean}" + p.suffix))
 
 
@@ -88,11 +89,17 @@ async def submit_request(
     if profanity_override_on:
         raw_words = str(form.get("profanity_extra_words", "")).strip()
         if raw_words:
-            extra_words_json = _json.dumps([w.strip().lower() for w in raw_words.splitlines() if w.strip()])
+            extra_words_json = _json.dumps(
+                [w.strip().lower() for w in raw_words.splitlines() if w.strip()]
+            )
         raw_phrases = str(form.get("profanity_extra_phrases", "")).strip()
         if raw_phrases:
-            extra_phrases_json = _json.dumps([p.strip().lower() for p in raw_phrases.splitlines() if p.strip()])
-        whisper_model_override = str(form.get("whisper_model_override", "")).strip() or None
+            extra_phrases_json = _json.dumps(
+                [p.strip().lower() for p in raw_phrases.splitlines() if p.strip()]
+            )
+        whisper_model_override = (
+            str(form.get("whisper_model_override", "")).strip() or None
+        )
         prof_padding_override = profanity_padding_ms
 
     # Collect per-request nudity category overrides (only if override toggle was on)
@@ -188,32 +195,56 @@ async def submit_request(
         use_bleep=use_bleep,
         audio_stream_index=audio_stream_index,
         profanity_extra_words_json=extra_words_json if profanity_override_on else None,
-        profanity_extra_phrases_json=extra_phrases_json if profanity_override_on else None,
+        profanity_extra_phrases_json=extra_phrases_json
+        if profanity_override_on
+        else None,
         profanity_padding_ms=prof_padding_override if profanity_override_on else None,
         whisper_model=whisper_model_override if profanity_override_on else None,
         nudity_confidence=nudity_confidence if nudity_override_on else None,
         nudity_sample_fps=nudity_sample_fps if nudity_override_on else None,
         nudity_padding_ms=nudity_padding_ms if nudity_override_on else None,
-        nudity_scene_merge_gap_ms=nudity_scene_merge_gap_ms if nudity_override_on else None,
+        nudity_scene_merge_gap_ms=nudity_scene_merge_gap_ms
+        if nudity_override_on
+        else None,
         nudity_categories_json=nudity_categories_json,
         nudity_detectors_json=nudity_detectors_json if nudity_override_on else None,
-        nudity_ensemble_strategy=nudity_ensemble_strategy if nudity_override_on else None,
+        nudity_ensemble_strategy=nudity_ensemble_strategy
+        if nudity_override_on
+        else None,
         nudity_temporal_enabled=nudity_temporal_enabled if nudity_override_on else None,
         nudity_temporal_window=nudity_temporal_window if nudity_override_on else None,
-        nudity_temporal_min_flagged=nudity_temporal_min_flagged if nudity_override_on else None,
+        nudity_temporal_min_flagged=nudity_temporal_min_flagged
+        if nudity_override_on
+        else None,
         nudity_extraction_mode=nudity_extraction_mode if nudity_override_on else None,
         filter_violence=filter_violence,
         violence_confidence=violence_confidence if violence_override_on else None,
         violence_sample_fps=violence_sample_fps if violence_override_on else None,
         violence_padding_ms=violence_padding_ms if violence_override_on else None,
-        violence_scene_merge_gap_ms=violence_scene_merge_gap_ms if violence_override_on else None,
-        violence_categories_json=violence_categories_json if violence_override_on else None,
-        violence_detectors_json=violence_detectors_json if violence_override_on else None,
-        violence_ensemble_strategy=violence_ensemble_strategy if violence_override_on else None,
-        violence_temporal_enabled=violence_temporal_enabled if violence_override_on else None,
-        violence_temporal_window=violence_temporal_window if violence_override_on else None,
-        violence_temporal_min_flagged=violence_temporal_min_flagged if violence_override_on else None,
-        violence_extraction_mode=violence_extraction_mode if violence_override_on else None,
+        violence_scene_merge_gap_ms=violence_scene_merge_gap_ms
+        if violence_override_on
+        else None,
+        violence_categories_json=violence_categories_json
+        if violence_override_on
+        else None,
+        violence_detectors_json=violence_detectors_json
+        if violence_override_on
+        else None,
+        violence_ensemble_strategy=violence_ensemble_strategy
+        if violence_override_on
+        else None,
+        violence_temporal_enabled=violence_temporal_enabled
+        if violence_override_on
+        else None,
+        violence_temporal_window=violence_temporal_window
+        if violence_override_on
+        else None,
+        violence_temporal_min_flagged=violence_temporal_min_flagged
+        if violence_override_on
+        else None,
+        violence_extraction_mode=violence_extraction_mode
+        if violence_override_on
+        else None,
         status=RequestStatus.queued,
     )
     db.add(conv_request)
@@ -269,7 +300,12 @@ async def list_requests(
     user: User = Depends(require_user),
 ):
     if user.is_admin:
-        reqs = db.query(ConversionRequest).order_by(ConversionRequest.created_at.desc()).limit(100).all()
+        reqs = (
+            db.query(ConversionRequest)
+            .order_by(ConversionRequest.created_at.desc())
+            .limit(100)
+            .all()
+        )
     else:
         reqs = (
             db.query(ConversionRequest)
@@ -291,13 +327,16 @@ async def request_detail(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    conv_req = db.query(ConversionRequest).filter(ConversionRequest.id == req_id).first()
+    conv_req = (
+        db.query(ConversionRequest).filter(ConversionRequest.id == req_id).first()
+    )
     if not conv_req:
         raise HTTPException(status_code=404)
     if not user.is_admin and conv_req.user_id != user.id:
         raise HTTPException(status_code=403)
 
     from .. import app_settings
+
     profanity_defaults = {
         "profanity_padding_ms": app_settings.get(db, "profanity_padding_ms"),
         "whisper_model": app_settings.get(db, "whisper_model"),
@@ -312,20 +351,28 @@ async def request_detail(
         "nudity_ensemble_strategy": app_settings.get(db, "nudity_ensemble_strategy"),
         "nudity_temporal_enabled": app_settings.get(db, "nudity_temporal_enabled"),
         "nudity_temporal_window": app_settings.get(db, "nudity_temporal_window"),
-        "nudity_temporal_min_flagged": app_settings.get(db, "nudity_temporal_min_flagged"),
+        "nudity_temporal_min_flagged": app_settings.get(
+            db, "nudity_temporal_min_flagged"
+        ),
         "nudity_extraction_mode": app_settings.get(db, "nudity_extraction_mode"),
     }
     violence_defaults = {
         "violence_confidence": app_settings.get(db, "violence_confidence"),
         "violence_sample_fps": app_settings.get(db, "violence_sample_fps"),
         "violence_padding_ms": app_settings.get(db, "violence_padding_ms"),
-        "violence_scene_merge_gap_ms": app_settings.get(db, "violence_scene_merge_gap_ms"),
+        "violence_scene_merge_gap_ms": app_settings.get(
+            db, "violence_scene_merge_gap_ms"
+        ),
         "violence_categories": app_settings.get(db, "violence_categories"),
         "violence_detectors": app_settings.get(db, "violence_detectors"),
-        "violence_ensemble_strategy": app_settings.get(db, "violence_ensemble_strategy"),
+        "violence_ensemble_strategy": app_settings.get(
+            db, "violence_ensemble_strategy"
+        ),
         "violence_temporal_enabled": app_settings.get(db, "violence_temporal_enabled"),
         "violence_temporal_window": app_settings.get(db, "violence_temporal_window"),
-        "violence_temporal_min_flagged": app_settings.get(db, "violence_temporal_min_flagged"),
+        "violence_temporal_min_flagged": app_settings.get(
+            db, "violence_temporal_min_flagged"
+        ),
         "violence_extraction_mode": app_settings.get(db, "violence_extraction_mode"),
     }
 
@@ -368,7 +415,9 @@ async def request_jobs_status(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    conv_req = db.query(ConversionRequest).filter(ConversionRequest.id == req_id).first()
+    conv_req = (
+        db.query(ConversionRequest).filter(ConversionRequest.id == req_id).first()
+    )
     if not conv_req:
         raise HTTPException(status_code=404)
     if not user.is_admin and conv_req.user_id != user.id:
@@ -419,6 +468,7 @@ def _queue_positions(db: Session, job_ids: list[int]) -> dict[int, int]:
 def _delete_job_files(job) -> None:
     """Delete the clean edition file and sidecar."""
     import re
+
     # Delete the output (clean edition) file
     if job.output_file:
         out = Path(job.output_file)
@@ -431,7 +481,9 @@ def _delete_job_files(job) -> None:
         if sidecar.exists():
             sidecar.unlink(missing_ok=True)
         # Also check sidecar next to original (non-edition) path
-        orig_stem = re.sub(r'\s*\{edition-[^}]+\}', '', Path(job.input_file).stem).rstrip()
+        orig_stem = re.sub(
+            r"\s*\{edition-[^}]+\}", "", Path(job.input_file).stem
+        ).rstrip()
         orig_sidecar = Path(job.input_file).parent / (orig_stem + ".cleanmedia.json")
         if orig_sidecar.exists():
             orig_sidecar.unlink(missing_ok=True)
@@ -444,13 +496,17 @@ async def delete_request(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    conv_req = db.query(ConversionRequest).filter(ConversionRequest.id == req_id).first()
+    conv_req = (
+        db.query(ConversionRequest).filter(ConversionRequest.id == req_id).first()
+    )
     if not conv_req:
         raise HTTPException(status_code=404)
     if not user.is_admin and conv_req.user_id != user.id:
         raise HTTPException(status_code=403)
     if any(j.status == JobStatus.running for j in conv_req.jobs):
-        raise HTTPException(status_code=400, detail="Cannot delete a request with a running job.")
+        raise HTTPException(
+            status_code=400, detail="Cannot delete a request with a running job."
+        )
 
     if delete_files:
         for job in conv_req.jobs:
@@ -459,6 +515,7 @@ async def delete_request(
     # For uploads, remove the entire upload directory
     if (conv_req.source or "plex") == "upload":
         import shutil
+
         for job in conv_req.jobs:
             if job.input_file:
                 upload_dir = Path(job.input_file).parent
@@ -475,7 +532,9 @@ async def retry_request(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    conv_req = db.query(ConversionRequest).filter(ConversionRequest.id == req_id).first()
+    conv_req = (
+        db.query(ConversionRequest).filter(ConversionRequest.id == req_id).first()
+    )
     if not conv_req:
         raise HTTPException(status_code=404)
     if not user.is_admin and conv_req.user_id != user.id:
@@ -561,7 +620,9 @@ async def edit_request(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
 ):
-    conv_req = db.query(ConversionRequest).filter(ConversionRequest.id == req_id).first()
+    conv_req = (
+        db.query(ConversionRequest).filter(ConversionRequest.id == req_id).first()
+    )
     if not conv_req:
         raise HTTPException(status_code=404)
     if not user.is_admin and conv_req.user_id != user.id:
@@ -579,11 +640,25 @@ async def edit_request(
     profanity_override_on = "profanity_padding_ms" in form
     if profanity_override_on:
         raw_words = str(form.get("profanity_extra_words", "")).strip()
-        conv_req.profanity_extra_words_json = _json.dumps([w.strip().lower() for w in raw_words.splitlines() if w.strip()]) if raw_words else None
+        conv_req.profanity_extra_words_json = (
+            _json.dumps(
+                [w.strip().lower() for w in raw_words.splitlines() if w.strip()]
+            )
+            if raw_words
+            else None
+        )
         raw_phrases = str(form.get("profanity_extra_phrases", "")).strip()
-        conv_req.profanity_extra_phrases_json = _json.dumps([p.strip().lower() for p in raw_phrases.splitlines() if p.strip()]) if raw_phrases else None
+        conv_req.profanity_extra_phrases_json = (
+            _json.dumps(
+                [p.strip().lower() for p in raw_phrases.splitlines() if p.strip()]
+            )
+            if raw_phrases
+            else None
+        )
         conv_req.profanity_padding_ms = profanity_padding_ms
-        conv_req.whisper_model = str(form.get("whisper_model_override", "")).strip() or None
+        conv_req.whisper_model = (
+            str(form.get("whisper_model_override", "")).strip() or None
+        )
     else:
         conv_req.profanity_extra_words_json = None
         conv_req.profanity_extra_phrases_json = None

@@ -10,7 +10,14 @@ from sqlalchemy.orm import Session
 from ..auth.password import hash_password
 from ..auth.sessions import set_flash
 from ..deps import get_db, require_admin
-from ..models import AppSetting, ConversionJob, ConversionRequest, Invitation, JobStatus, RequestStatus, User
+from ..models import (
+    ConversionJob,
+    ConversionRequest,
+    Invitation,
+    JobStatus,
+    RequestStatus,
+    User,
+)
 from ..templates import templates
 
 router = APIRouter(prefix="/admin")
@@ -28,10 +35,18 @@ async def admin_users(
     user: User = Depends(require_admin),
 ):
     users = db.query(User).order_by(User.created_at.desc()).all()
-    invitations = db.query(Invitation).order_by(Invitation.created_at.desc()).limit(50).all()
+    invitations = (
+        db.query(Invitation).order_by(Invitation.created_at.desc()).limit(50).all()
+    )
     return templates.TemplateResponse(
         "admin/users.html",
-        {"request": request, "user": user, "users": users, "invitations": invitations, "now": datetime.utcnow()},
+        {
+            "request": request,
+            "user": user,
+            "users": users,
+            "invitations": invitations,
+            "now": datetime.utcnow(),
+        },
     )
 
 
@@ -73,7 +88,9 @@ async def toggle_admin(
     if not target:
         raise HTTPException(status_code=404)
     if target.id == admin.id:
-        raise HTTPException(status_code=400, detail="Cannot change your own admin status.")
+        raise HTTPException(
+            status_code=400, detail="Cannot change your own admin status."
+        )
     target.is_admin = not target.is_admin
     db.commit()
     return RedirectResponse("/admin/users", status_code=303)
@@ -121,6 +138,7 @@ async def bulk_user_action(
     if action == "invite":
         from ..config import settings as cfg
         from ..email import is_email_configured, send_invite_email
+
         invited = 0
         no_email = 0
         for target in targets:
@@ -165,7 +183,11 @@ async def bulk_user_action(
 
     labels = {"approve": "approved", "revoke": "revoked", "delete": "deleted"}
     redirect = RedirectResponse("/admin/users", status_code=303)
-    set_flash(redirect, f"{labels[action].capitalize()} {count} user{'s' if count != 1 else ''}.", "success")
+    set_flash(
+        redirect,
+        f"{labels[action].capitalize()} {count} user{'s' if count != 1 else ''}.",
+        "success",
+    )
     return redirect
 
 
@@ -183,7 +205,9 @@ async def masquerade_as_user(
         set_flash(redirect, "You can't masquerade as yourself.", "error")
         return redirect
     redirect = RedirectResponse("/", status_code=303)
-    redirect.set_cookie("cleanarr_masquerade", str(user_id), httponly=True, samesite="lax")
+    redirect.set_cookie(
+        "cleanarr_masquerade", str(user_id), httponly=True, samesite="lax"
+    )
     set_flash(redirect, f"Now viewing as {target.username}.", "info")
     return redirect
 
@@ -226,15 +250,25 @@ async def create_user(
         errors.append("Password must be at least 8 characters.")
     if password != password_confirm:
         errors.append("Passwords do not match.")
-    existing = db.query(User).filter(User.username == username.strip(), User.auth_method == "local").first()
+    existing = (
+        db.query(User)
+        .filter(User.username == username.strip(), User.auth_method == "local")
+        .first()
+    )
     if existing:
         errors.append("A local user with that username already exists.")
 
     if errors:
-        return templates.TemplateResponse("admin/create_user.html", {
-            "request": request, "user": admin,
-            "errors": errors, "form_username": username, "form_is_admin": is_admin,
-        })
+        return templates.TemplateResponse(
+            "admin/create_user.html",
+            {
+                "request": request,
+                "user": admin,
+                "errors": errors,
+                "form_username": username,
+                "form_is_admin": is_admin,
+            },
+        )
 
     new_user = User(
         username=username.strip(),
@@ -259,7 +293,9 @@ async def reset_password(
     if not target or target.auth_method != "local":
         raise HTTPException(status_code=404)
     if len(new_password) < 8:
-        raise HTTPException(status_code=400, detail="Password must be at least 8 characters.")
+        raise HTTPException(
+            status_code=400, detail="Password must be at least 8 characters."
+        )
     target.password_hash = hash_password(new_password)
     db.commit()
     return RedirectResponse("/admin/users", status_code=303)
@@ -284,19 +320,23 @@ async def import_plex_users(
         set_flash(redirect, f"Failed to fetch Plex users: {e}", "error")
         return redirect
 
-    existing_users = {u.plex_id: u for u in db.query(User).filter(User.plex_id.isnot(None)).all()}
+    existing_users = {
+        u.plex_id: u for u in db.query(User).filter(User.plex_id.isnot(None)).all()
+    }
     imported = 0
     updated = 0
     for pu in plex_users:
         email = pu.get("email") or None
         if pu["id"] not in existing_users:
-            db.add(User(
-                plex_id=pu["id"],
-                username=pu["username"],
-                email=email,
-                auth_method="plex",
-                is_approved=False,
-            ))
+            db.add(
+                User(
+                    plex_id=pu["id"],
+                    username=pu["username"],
+                    email=email,
+                    auth_method="plex",
+                    is_approved=False,
+                )
+            )
             imported += 1
         elif email and not existing_users[pu["id"]].email:
             existing_users[pu["id"]].email = email
@@ -308,10 +348,16 @@ async def import_plex_users(
         if imported:
             parts.append(f"Imported {imported} new user{'s' if imported != 1 else ''}")
         if updated:
-            parts.append(f"updated emails for {updated} existing user{'s' if updated != 1 else ''}")
+            parts.append(
+                f"updated emails for {updated} existing user{'s' if updated != 1 else ''}"
+            )
         set_flash(redirect, f"{', '.join(parts)} from Plex.", "success")
     else:
-        set_flash(redirect, "No new users to import — all Plex users are already in CleanArr.", "info")
+        set_flash(
+            redirect,
+            "No new users to import — all Plex users are already in CleanArr.",
+            "info",
+        )
     return redirect
 
 
@@ -320,7 +366,9 @@ async def invite_form(
     request: Request,
     user: User = Depends(require_admin),
 ):
-    return templates.TemplateResponse("admin/invite.html", {"request": request, "user": user})
+    return templates.TemplateResponse(
+        "admin/invite.html", {"request": request, "user": user}
+    )
 
 
 @router.post("/users/invite")
@@ -350,7 +398,11 @@ async def invite_user(
         if send_invite_email(email.strip(), invite_url):
             set_flash(redirect, f"Invite sent to {email}.", "success")
         else:
-            set_flash(redirect, f"Invite created but email failed to send. Link: {invite_url}", "warn")
+            set_flash(
+                redirect,
+                f"Invite created but email failed to send. Link: {invite_url}",
+                "warn",
+            )
     else:
         set_flash(redirect, f"Invite link (no SMTP configured): {invite_url}", "info")
 
@@ -396,7 +448,11 @@ async def retry_job(
         job.started_at = None
         job.finished_at = None
         db.commit()
-        req = db.query(ConversionRequest).filter(ConversionRequest.id == job.request_id).first()
+        req = (
+            db.query(ConversionRequest)
+            .filter(ConversionRequest.id == job.request_id)
+            .first()
+        )
         if req:
             req.status = RequestStatus.queued
             db.commit()
@@ -463,11 +519,22 @@ def _reorder_job(db: Session, job_id: int, direction: int) -> None:
     # Reassign all priorities as sequential integers, then swap
     for i, j in enumerate(jobs):
         j.priority = i * 10
-    jobs[idx].priority, jobs[swap_idx].priority = jobs[swap_idx].priority, jobs[idx].priority
+    jobs[idx].priority, jobs[swap_idx].priority = (
+        jobs[swap_idx].priority,
+        jobs[idx].priority,
+    )
     db.commit()
 
 
-_SETTINGS_SECTIONS = ("plex", "paths", "worker", "profanity", "nudity", "violence", "ai")
+_SETTINGS_SECTIONS = (
+    "plex",
+    "paths",
+    "worker",
+    "profanity",
+    "nudity",
+    "violence",
+    "ai",
+)
 
 
 @router.get("/settings")
@@ -487,10 +554,13 @@ async def settings_section(
 
     from .. import app_settings
     import json
+
     s = app_settings.all_settings(db)
 
     ctx: dict = {
-        "request": request, "user": user, "s": s,
+        "request": request,
+        "user": user,
+        "s": s,
         "active_tab": section,
         "saved": request.query_params.get("saved"),
     }
@@ -518,14 +588,24 @@ async def save_settings_section(
 
     from .. import app_settings
     import json
+
     form = await request.form()
 
     if section == "plex":
-        for key in ("plex_server_url", "plex_admin_token", "plex_client_id", "plex_admin_plex_ids"):
+        for key in (
+            "plex_server_url",
+            "plex_admin_token",
+            "plex_client_id",
+            "plex_admin_plex_ids",
+        ):
             app_settings.put(db, key, str(form.get(key, "")).strip())
 
     elif section == "paths":
-        for key in ("plex_path_prefix_from", "plex_path_prefix_to", "allowed_media_dirs"):
+        for key in (
+            "plex_path_prefix_from",
+            "plex_path_prefix_to",
+            "allowed_media_dirs",
+        ):
             app_settings.put(db, key, str(form.get(key, "")).strip())
 
     elif section == "worker":
@@ -534,39 +614,101 @@ async def save_settings_section(
 
     elif section == "profanity":
         raw_words = str(form.get("profanity_words", ""))
-        app_settings.put(db, "profanity_words", json.dumps([w.strip().lower() for w in raw_words.splitlines() if w.strip()]))
+        app_settings.put(
+            db,
+            "profanity_words",
+            json.dumps(
+                [w.strip().lower() for w in raw_words.splitlines() if w.strip()]
+            ),
+        )
         raw_phrases = str(form.get("profanity_phrases", ""))
-        app_settings.put(db, "profanity_phrases", json.dumps([p.strip().lower() for p in raw_phrases.splitlines() if p.strip()]))
-        app_settings.put(db, "profanity_padding_ms", str(form.get("profanity_padding_ms", "")).strip())
+        app_settings.put(
+            db,
+            "profanity_phrases",
+            json.dumps(
+                [p.strip().lower() for p in raw_phrases.splitlines() if p.strip()]
+            ),
+        )
+        app_settings.put(
+            db,
+            "profanity_padding_ms",
+            str(form.get("profanity_padding_ms", "")).strip(),
+        )
 
     elif section == "nudity":
-        app_settings.put(db, "nudity_confidence", str(form.get("nudity_confidence", "0.7")).strip())
-        for key in ("nudity_sample_fps", "nudity_padding_ms", "nudity_scene_merge_gap_ms"):
+        app_settings.put(
+            db, "nudity_confidence", str(form.get("nudity_confidence", "0.7")).strip()
+        )
+        for key in (
+            "nudity_sample_fps",
+            "nudity_padding_ms",
+            "nudity_scene_merge_gap_ms",
+        ):
             app_settings.put(db, key, str(form.get(key, "")).strip())
-        app_settings.put(db, "nudity_categories", json.dumps(list(form.getlist("nudity_categories"))))
+        app_settings.put(
+            db, "nudity_categories", json.dumps(list(form.getlist("nudity_categories")))
+        )
         dets = form.getlist("nudity_detectors")
-        app_settings.put(db, "nudity_detectors", json.dumps(list(dets)) if dets else '["nudenet"]')
-        for key in ("nudity_ensemble_strategy", "nudity_extraction_mode", "nudity_device"):
+        app_settings.put(
+            db, "nudity_detectors", json.dumps(list(dets)) if dets else '["nudenet"]'
+        )
+        for key in (
+            "nudity_ensemble_strategy",
+            "nudity_extraction_mode",
+            "nudity_device",
+        ):
             app_settings.put(db, key, str(form.get(key, "")).strip())
-        app_settings.put(db, "nudity_temporal_enabled", "true" if form.get("nudity_temporal_enabled") else "false")
+        app_settings.put(
+            db,
+            "nudity_temporal_enabled",
+            "true" if form.get("nudity_temporal_enabled") else "false",
+        )
         for key in ("nudity_temporal_window", "nudity_temporal_min_flagged"):
             app_settings.put(db, key, str(form.get(key, "")).strip())
 
     elif section == "violence":
-        app_settings.put(db, "violence_confidence", str(form.get("violence_confidence", "0.5")).strip())
-        for key in ("violence_sample_fps", "violence_padding_ms", "violence_scene_merge_gap_ms"):
+        app_settings.put(
+            db,
+            "violence_confidence",
+            str(form.get("violence_confidence", "0.5")).strip(),
+        )
+        for key in (
+            "violence_sample_fps",
+            "violence_padding_ms",
+            "violence_scene_merge_gap_ms",
+        ):
             app_settings.put(db, key, str(form.get(key, "")).strip())
-        app_settings.put(db, "violence_categories", json.dumps(list(form.getlist("violence_categories"))))
+        app_settings.put(
+            db,
+            "violence_categories",
+            json.dumps(list(form.getlist("violence_categories"))),
+        )
         viol_dets = form.getlist("violence_detectors")
-        app_settings.put(db, "violence_detectors", json.dumps(list(viol_dets)) if viol_dets else '["siglip_violence"]')
-        for key in ("violence_ensemble_strategy", "violence_extraction_mode", "violence_device"):
+        app_settings.put(
+            db,
+            "violence_detectors",
+            json.dumps(list(viol_dets)) if viol_dets else '["siglip_violence"]',
+        )
+        for key in (
+            "violence_ensemble_strategy",
+            "violence_extraction_mode",
+            "violence_device",
+        ):
             app_settings.put(db, key, str(form.get(key, "")).strip())
-        app_settings.put(db, "violence_temporal_enabled", "true" if form.get("violence_temporal_enabled") else "false")
+        app_settings.put(
+            db,
+            "violence_temporal_enabled",
+            "true" if form.get("violence_temporal_enabled") else "false",
+        )
         for key in ("violence_temporal_window", "violence_temporal_min_flagged"):
             app_settings.put(db, key, str(form.get(key, "")).strip())
 
     elif section == "ai":
-        app_settings.put(db, "ai_advisor_enabled", "true" if form.get("ai_advisor_enabled") else "false")
+        app_settings.put(
+            db,
+            "ai_advisor_enabled",
+            "true" if form.get("ai_advisor_enabled") else "false",
+        )
         for key in ("ollama_url", "ollama_model"):
             app_settings.put(db, key, str(form.get(key, "")).strip())
 

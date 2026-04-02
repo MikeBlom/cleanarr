@@ -4,14 +4,21 @@ import shutil
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from ..auth.sessions import set_flash
 from ..config import settings
 from ..deps import get_db, require_user
-from ..models import ConversionJob, ConversionRequest, JobStatus, RequestStatus, RequestType, User
+from ..models import (
+    ConversionJob,
+    ConversionRequest,
+    JobStatus,
+    RequestStatus,
+    RequestType,
+    User,
+)
 from ..templates import templates
 
 router = APIRouter()
@@ -26,34 +33,48 @@ def _active_upload(db: Session, user_id: int) -> ConversionRequest | None:
         .filter(
             ConversionRequest.user_id == user_id,
             ConversionRequest.source == "upload",
-            ConversionRequest.status.in_([
-                RequestStatus.pending, RequestStatus.queued,
-                RequestStatus.partially_complete, RequestStatus.complete,
-            ]),
+            ConversionRequest.status.in_(
+                [
+                    RequestStatus.pending,
+                    RequestStatus.queued,
+                    RequestStatus.partially_complete,
+                    RequestStatus.complete,
+                ]
+            ),
         )
         .first()
     )
 
 
 @router.get("/upload", response_class=HTMLResponse)
-async def upload_page(request: Request, db: Session = Depends(get_db), user: User = Depends(require_user)):
+async def upload_page(
+    request: Request, db: Session = Depends(get_db), user: User = Depends(require_user)
+):
     active = _active_upload(db, user.id)
     if active:
         # Redirect to the active request — user must download or delete it first
         redirect = RedirectResponse(f"/requests/{active.id}", status_code=302)
-        set_flash(redirect, "You already have an upload being processed. Download or delete it before uploading another.", "info")
+        set_flash(
+            redirect,
+            "You already have an upload being processed. Download or delete it before uploading another.",
+            "info",
+        )
         return redirect
 
     from .. import app_settings as _as
+
     s = _as.all_settings(db)
-    return templates.TemplateResponse("upload.html", {
-        "request": request,
-        "user": user,
-        "max_upload_mb": settings.MAX_UPLOAD_SIZE_MB,
-        "profanity_defaults": s,
-        "nudity_defaults": s,
-        "violence_defaults": s,
-    })
+    return templates.TemplateResponse(
+        "upload.html",
+        {
+            "request": request,
+            "user": user,
+            "max_upload_mb": settings.MAX_UPLOAD_SIZE_MB,
+            "profanity_defaults": s,
+            "nudity_defaults": s,
+            "violence_defaults": s,
+        },
+    )
 
 
 @router.post("/upload")
@@ -67,7 +88,11 @@ async def upload_file(
     active = _active_upload(db, user.id)
     if active:
         redirect = RedirectResponse(f"/requests/{active.id}", status_code=303)
-        set_flash(redirect, "You already have an upload being processed. Download or delete it first.", "error")
+        set_flash(
+            redirect,
+            "You already have an upload being processed. Download or delete it first.",
+            "error",
+        )
         return redirect
 
     # Validate extension
@@ -75,19 +100,29 @@ async def upload_file(
     ext = Path(filename).suffix.lower()
     if ext not in ALLOWED_EXTENSIONS:
         from .. import app_settings as _as
+
         s = _as.all_settings(db)
-        return templates.TemplateResponse("upload.html", {
-            "request": request, "user": user,
-            "max_upload_mb": settings.MAX_UPLOAD_SIZE_MB,
-            "profanity_defaults": s, "nudity_defaults": s, "violence_defaults": s,
-            "errors": [f"File type '{ext}' is not supported. Accepted: {', '.join(sorted(ALLOWED_EXTENSIONS))}"],
-        })
+        return templates.TemplateResponse(
+            "upload.html",
+            {
+                "request": request,
+                "user": user,
+                "max_upload_mb": settings.MAX_UPLOAD_SIZE_MB,
+                "profanity_defaults": s,
+                "nudity_defaults": s,
+                "violence_defaults": s,
+                "errors": [
+                    f"File type '{ext}' is not supported. Accepted: {', '.join(sorted(ALLOWED_EXTENSIONS))}"
+                ],
+            },
+        )
 
     # Create upload directory with open permissions so the host worker can write sidecars
     upload_id = str(uuid.uuid4())
     write_dir = Path(settings.UPLOAD_DIR) / str(user.id) / upload_id
     write_dir.mkdir(parents=True, exist_ok=True)
     import os
+
     os.chmod(write_dir, 0o777)
 
     dest = write_dir / f"{Path(filename).stem}{ext}"
@@ -105,13 +140,22 @@ async def upload_file(
                     f.close()
                     shutil.rmtree(write_dir)
                     from .. import app_settings as _as
+
                     s = _as.all_settings(db)
-                    return templates.TemplateResponse("upload.html", {
-                        "request": request, "user": user,
-                        "max_upload_mb": settings.MAX_UPLOAD_SIZE_MB,
-                        "profanity_defaults": s, "nudity_defaults": s, "violence_defaults": s,
-                        "errors": [f"File exceeds maximum size of {settings.MAX_UPLOAD_SIZE_MB // 1024}GB."],
-                    })
+                    return templates.TemplateResponse(
+                        "upload.html",
+                        {
+                            "request": request,
+                            "user": user,
+                            "max_upload_mb": settings.MAX_UPLOAD_SIZE_MB,
+                            "profanity_defaults": s,
+                            "nudity_defaults": s,
+                            "violence_defaults": s,
+                            "errors": [
+                                f"File exceeds maximum size of {settings.MAX_UPLOAD_SIZE_MB // 1024}GB."
+                            ],
+                        },
+                    )
                 f.write(chunk)
     except Exception:
         shutil.rmtree(write_dir, ignore_errors=True)
@@ -121,6 +165,7 @@ async def upload_file(
 
     # Parse form fields for filters and overrides
     import json as _json
+
     form = await request.form()
     filter_profanity = form.get("filter_profanity") == "true"
     filter_nudity = form.get("filter_nudity") == "true"
@@ -130,9 +175,17 @@ async def upload_file(
 
     # Profanity overrides
     extra_words_raw = str(form.get("profanity_extra_words", "")).strip()
-    extra_words_json = _json.dumps([w.strip() for w in extra_words_raw.splitlines() if w.strip()]) if extra_words_raw else None
+    extra_words_json = (
+        _json.dumps([w.strip() for w in extra_words_raw.splitlines() if w.strip()])
+        if extra_words_raw
+        else None
+    )
     extra_phrases_raw = str(form.get("profanity_extra_phrases", "")).strip()
-    extra_phrases_json = _json.dumps([p.strip() for p in extra_phrases_raw.splitlines() if p.strip()]) if extra_phrases_raw else None
+    extra_phrases_json = (
+        _json.dumps([p.strip() for p in extra_phrases_raw.splitlines() if p.strip()])
+        if extra_phrases_raw
+        else None
+    )
     prof_padding = form.get("profanity_padding_ms")
     whisper_model = form.get("whisper_model_override")
 
@@ -208,7 +261,11 @@ async def upload_file(
 
     # Store host-mapped path in DB so the systemd worker can access it
     host_dir = settings.UPLOAD_DIR_HOST or settings.UPLOAD_DIR
-    host_file = str(dest).replace(settings.UPLOAD_DIR, host_dir, 1) if host_dir != settings.UPLOAD_DIR else str(dest)
+    host_file = (
+        str(dest).replace(settings.UPLOAD_DIR, host_dir, 1)
+        if host_dir != settings.UPLOAD_DIR
+        else str(dest)
+    )
 
     job = ConversionJob(
         request_id=req.id,
@@ -238,12 +295,18 @@ async def download_clean_file(
     if req.user_id != user.id and not user.is_admin:
         raise HTTPException(status_code=403)
     if req.source != "upload":
-        raise HTTPException(status_code=400, detail="Downloads are only available for uploaded files.")
+        raise HTTPException(
+            status_code=400, detail="Downloads are only available for uploaded files."
+        )
 
-    job = db.query(ConversionJob).filter(
-        ConversionJob.id == job_id,
-        ConversionJob.request_id == req_id,
-    ).first()
+    job = (
+        db.query(ConversionJob)
+        .filter(
+            ConversionJob.id == job_id,
+            ConversionJob.request_id == req_id,
+        )
+        .first()
+    )
     if not job or not job.output_file:
         raise HTTPException(status_code=404, detail="Clean file not available.")
 
@@ -276,9 +339,14 @@ async def download_clean_file(
     def _cleanup():
         shutil.rmtree(upload_dir, ignore_errors=True)
         from ..database import SessionLocal
+
         cleanup_db = SessionLocal()
         try:
-            r = cleanup_db.query(ConversionRequest).filter(ConversionRequest.id == req_id).first()
+            r = (
+                cleanup_db.query(ConversionRequest)
+                .filter(ConversionRequest.id == req_id)
+                .first()
+            )
             if r:
                 cleanup_db.delete(r)
                 cleanup_db.commit()

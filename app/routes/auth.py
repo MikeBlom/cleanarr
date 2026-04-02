@@ -7,10 +7,15 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from ..auth.password import hash_password, verify_password
-from ..auth.plex import create_pin, fetch_server_users, fetch_user_info, plex_auth_url, poll_pin
+from ..auth.plex import (
+    create_pin,
+    fetch_server_users,
+    fetch_user_info,
+    plex_auth_url,
+    poll_pin,
+)
 from ..auth.sessions import create_session, destroy_session, set_flash
 from ..config import settings
-from ..database import SessionLocal
 from ..deps import get_current_user, get_db
 from ..models import Invitation, User
 from ..templates import templates
@@ -23,7 +28,9 @@ def _has_any_users(db: Session) -> bool:
 
 
 @router.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request, db: Session = Depends(get_db), user=Depends(get_current_user)):
+async def login_page(
+    request: Request, db: Session = Depends(get_db), user=Depends(get_current_user)
+):
     if not _has_any_users(db):
         return RedirectResponse("/setup", status_code=302)
     if user and user.is_approved:
@@ -58,10 +65,15 @@ async def setup_create(
         errors.append("Passwords do not match.")
 
     if errors:
-        return templates.TemplateResponse("setup.html", {
-            "request": request, "user": None,
-            "errors": errors, "username": username,
-        })
+        return templates.TemplateResponse(
+            "setup.html",
+            {
+                "request": request,
+                "user": None,
+                "errors": errors,
+                "username": username,
+            },
+        )
 
     user = User(
         username=username.strip(),
@@ -82,12 +94,20 @@ async def local_login(
     username: str = Form(...),
     password: str = Form(...),
 ):
-    user = db.query(User).filter(
-        User.username == username,
-        User.auth_method == "local",
-    ).first()
+    user = (
+        db.query(User)
+        .filter(
+            User.username == username,
+            User.auth_method == "local",
+        )
+        .first()
+    )
 
-    if not user or not user.password_hash or not verify_password(password, user.password_hash):
+    if (
+        not user
+        or not user.password_hash
+        or not verify_password(password, user.password_hash)
+    ):
         return RedirectResponse("/login?error=invalid", status_code=302)
 
     user.last_login = datetime.utcnow()
@@ -106,7 +126,9 @@ async def plex_start(request: Request, response: Response):
     auth_url = plex_auth_url(pin_code, callback_url)
 
     redirect = RedirectResponse(auth_url, status_code=302)
-    redirect.set_cookie("plex_pin_id", str(pin_id), max_age=600, httponly=True, samesite="lax")
+    redirect.set_cookie(
+        "plex_pin_id", str(pin_id), max_age=600, httponly=True, samesite="lax"
+    )
     return redirect
 
 
@@ -142,11 +164,15 @@ async def plex_callback(
     # Check if this is an invite-based sign-up
     invited = False
     if invite_token:
-        invitation = db.query(Invitation).filter(
-            Invitation.token == invite_token,
-            Invitation.accepted_at.is_(None),
-            Invitation.expires_at > datetime.utcnow(),
-        ).first()
+        invitation = (
+            db.query(Invitation)
+            .filter(
+                Invitation.token == invite_token,
+                Invitation.accepted_at.is_(None),
+                Invitation.expires_at > datetime.utcnow(),
+            )
+            .first()
+        )
         if invitation:
             invited = True
             invitation.accepted_at = datetime.utcnow()
@@ -157,6 +183,7 @@ async def plex_callback(
     # For new users: verify they're a member of the Plex server (unless admin or invited)
     if user is None and not is_admin and not invited:
         from .. import app_settings as _as
+
         server_url = _as.get(db, "plex_server_url")
         admin_token = _as.get(db, "plex_admin_token")
         try:
@@ -215,19 +242,36 @@ async def logout(
 
 
 @router.get("/invite/{token}", response_class=HTMLResponse)
-async def invite_accept_page(request: Request, token: str, db: Session = Depends(get_db)):
-    invitation = db.query(Invitation).filter(
-        Invitation.token == token,
-        Invitation.accepted_at.is_(None),
-        Invitation.expires_at > datetime.utcnow(),
-    ).first()
+async def invite_accept_page(
+    request: Request, token: str, db: Session = Depends(get_db)
+):
+    invitation = (
+        db.query(Invitation)
+        .filter(
+            Invitation.token == token,
+            Invitation.accepted_at.is_(None),
+            Invitation.expires_at > datetime.utcnow(),
+        )
+        .first()
+    )
     if not invitation:
-        return templates.TemplateResponse("invite_accept.html", {
-            "request": request, "user": None, "invitation": None, "error": "This invite link is invalid or has expired.",
-        })
-    return templates.TemplateResponse("invite_accept.html", {
-        "request": request, "user": None, "invitation": invitation,
-    })
+        return templates.TemplateResponse(
+            "invite_accept.html",
+            {
+                "request": request,
+                "user": None,
+                "invitation": None,
+                "error": "This invite link is invalid or has expired.",
+            },
+        )
+    return templates.TemplateResponse(
+        "invite_accept.html",
+        {
+            "request": request,
+            "user": None,
+            "invitation": invitation,
+        },
+    )
 
 
 @router.post("/invite/{token}/local")
@@ -239,11 +283,15 @@ async def invite_accept_local(
     password: str = Form(...),
     password_confirm: str = Form(...),
 ):
-    invitation = db.query(Invitation).filter(
-        Invitation.token == token,
-        Invitation.accepted_at.is_(None),
-        Invitation.expires_at > datetime.utcnow(),
-    ).first()
+    invitation = (
+        db.query(Invitation)
+        .filter(
+            Invitation.token == token,
+            Invitation.accepted_at.is_(None),
+            Invitation.expires_at > datetime.utcnow(),
+        )
+        .first()
+    )
     if not invitation:
         return RedirectResponse(f"/invite/{token}", status_code=302)
 
@@ -254,15 +302,25 @@ async def invite_accept_local(
         errors.append("Password must be at least 8 characters.")
     if password != password_confirm:
         errors.append("Passwords do not match.")
-    existing = db.query(User).filter(User.username == username.strip(), User.auth_method == "local").first()
+    existing = (
+        db.query(User)
+        .filter(User.username == username.strip(), User.auth_method == "local")
+        .first()
+    )
     if existing:
         errors.append("That username is already taken.")
 
     if errors:
-        return templates.TemplateResponse("invite_accept.html", {
-            "request": request, "user": None, "invitation": invitation,
-            "errors": errors, "form_username": username,
-        })
+        return templates.TemplateResponse(
+            "invite_accept.html",
+            {
+                "request": request,
+                "user": None,
+                "invitation": invitation,
+                "errors": errors,
+                "form_username": username,
+            },
+        )
 
     user = User(
         username=username.strip(),
@@ -283,12 +341,18 @@ async def invite_accept_local(
 
 
 @router.post("/invite/{token}/plex")
-async def invite_accept_plex(request: Request, token: str, db: Session = Depends(get_db)):
-    invitation = db.query(Invitation).filter(
-        Invitation.token == token,
-        Invitation.accepted_at.is_(None),
-        Invitation.expires_at > datetime.utcnow(),
-    ).first()
+async def invite_accept_plex(
+    request: Request, token: str, db: Session = Depends(get_db)
+):
+    invitation = (
+        db.query(Invitation)
+        .filter(
+            Invitation.token == token,
+            Invitation.accepted_at.is_(None),
+            Invitation.expires_at > datetime.utcnow(),
+        )
+        .first()
+    )
     if not invitation:
         return RedirectResponse(f"/invite/{token}", status_code=302)
 
@@ -297,8 +361,12 @@ async def invite_accept_plex(request: Request, token: str, db: Session = Depends
     auth_url = plex_auth_url(pin_code, callback_url)
 
     redirect = RedirectResponse(auth_url, status_code=302)
-    redirect.set_cookie("plex_pin_id", str(pin_id), max_age=600, httponly=True, samesite="lax")
-    redirect.set_cookie("invite_token", token, max_age=600, httponly=True, samesite="lax")
+    redirect.set_cookie(
+        "plex_pin_id", str(pin_id), max_age=600, httponly=True, samesite="lax"
+    )
+    redirect.set_cookie(
+        "invite_token", token, max_age=600, httponly=True, samesite="lax"
+    )
     return redirect
 
 
@@ -306,4 +374,6 @@ async def invite_accept_plex(request: Request, token: str, db: Session = Depends
 async def pending_page(request: Request, user=Depends(get_current_user)):
     if user is None:
         return RedirectResponse("/login", status_code=302)
-    return templates.TemplateResponse("pending.html", {"request": request, "user": user})
+    return templates.TemplateResponse(
+        "pending.html", {"request": request, "user": user}
+    )

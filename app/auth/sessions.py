@@ -58,7 +58,9 @@ def set_flash(response: Response, message: str, level: str = "success") -> None:
     response.set_cookie(
         "cleanarr_flash",
         json.dumps({"msg": message, "level": level}),
-        max_age=10, httponly=True, samesite="lax",
+        max_age=10,
+        httponly=True,
+        samesite="lax",
     )
 
 
