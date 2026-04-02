@@ -456,12 +456,18 @@ async def plex_thumb(url: str, db: Session = Depends(get_db)):
             headers={"Cache-Control": "public, max-age=31536000"},
         )
 
-    plex_url = f"{_as.get(db, 'plex_server_url').rstrip('/')}{url}"
+    # Read settings and release DB connection before the network call
+    # to avoid holding a pool slot during the (potentially slow) Plex fetch.
+    plex_server_url = _as.get(db, "plex_server_url")
+    plex_token = _as.get(db, "plex_admin_token")
+    db.close()
+
+    plex_url = f"{plex_server_url.rstrip('/')}{url}"
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.get(
                 plex_url,
-                params={"X-Plex-Token": _as.get(db, "plex_admin_token")},
+                params={"X-Plex-Token": plex_token},
                 timeout=10,
             )
             resp.raise_for_status()
