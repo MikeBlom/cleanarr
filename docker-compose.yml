@@ -11,7 +11,7 @@ services:
       # Mount your media directories (adjust paths for your system):
       # - /path/to/movies:/media/movies
       # - /path/to/tv:/media/tv
-      # Mount cleanmedia source (for pip install at startup):
+      # Dev only: override bundled cleanmedia with local source
       # - /path/to/cleanmedia:/cleanmedia
     environment:
       - DATABASE_URL=sqlite:////data/cleanarr.db

@@ -10,7 +10,6 @@ _ENV_FILE = Path(__file__).parent.parent / ".env"
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=str(_ENV_FILE), env_file_encoding="utf-8", extra="ignore")
 
-    SECRET_KEY: str = "change_me_to_long_random_string"
     BASE_URL: str = "http://localhost:8765"
     DEBUG: bool = False
     DATABASE_URL: str = "sqlite:////data/cleanarr.db"

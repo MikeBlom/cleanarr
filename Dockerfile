@@ -23,6 +23,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
 RUN pip install --no-cache-dir openai-whisper typer nudenet "transformers>=4.36" "Pillow>=10"
 
+# Install cleanmedia (bundled; can be overridden via volume mount at /cleanmedia)
+RUN pip install --no-cache-dir "cleanmedia @ git+https://github.com/MikeBlom/cleanmedia.git"
+
 COPY app/ ./app/
 COPY entrypoint.sh .
 RUN chmod +x entrypoint.sh
