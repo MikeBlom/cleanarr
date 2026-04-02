@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     software-properties-common gpg-agent \
     && add-apt-repository -y ppa:deadsnakes/ppa \
     && apt-get update && apt-get install -y --no-install-recommends \
-    python3.11 python3.11-venv python3.11-distutils ffmpeg cuda-nvcc-12-4 \
+    python3.11 python3.11-venv python3.11-distutils ffmpeg git cuda-nvcc-12-4 \
     && ln -sf /usr/bin/python3.11 /usr/bin/python3 \
     && ln -sf /usr/bin/python3.11 /usr/bin/python \
     && python3 -m ensurepip --upgrade \

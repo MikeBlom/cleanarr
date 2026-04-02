@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Accept Invite – CleanArr{% endblock %}
+{% block content %}
+<div class="login-box">
+  <h1>CleanArr</h1>
+  {% if error %}
+  <div class="alert alert-error">{{ error }}</div>
+  {% elif invitation %}
+  <p>You've been invited! Set up your account below.</p>
+  {% if errors %}
+  <div class="alert alert-error">
+    {% for e in errors %}<div>{{ e }}</div>{% endfor %}
+  </div>
+  {% endif %}
+  <form method="post" action="/invite/{{ invitation.token }}/local">
+    <div class="field">
+      <span class="field-label">Username</span>
+      <input type="text" name="username" class="select-input" value="{{ form_username | default('', true) }}" required autofocus>
+    </div>
+    <div class="field">
+      <span class="field-label">Password</span>
+      <input type="password" name="password" class="select-input" required minlength="8">
+      <span class="field-hint">Minimum 8 characters.</span>
+    </div>
+    <div class="field">
+      <span class="field-label">Confirm Password</span>
+      <input type="password" name="password_confirm" class="select-input" required>
+    </div>
+    <button type="submit" class="btn btn-primary" style="width:100%;margin-top:0.75rem">Create Account</button>
+  </form>
+  <div style="text-align:center;margin:1.25rem 0;color:var(--text-muted);font-size:0.85rem">— or —</div>
+  <form method="post" action="/invite/{{ invitation.token }}/plex">
+    <button type="submit" class="btn btn-plex" style="width:100%">Sign in with Plex</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

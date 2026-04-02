@@ -3,12 +3,26 @@
 {% block content %}
 <div class="login-box">
   <h1>CleanArr</h1>
-  <p>Sign in with your Plex account to request clean conversions.</p>
-  {% if request.query_params.get("error") %}
+  <p>Sign in to request clean conversions.</p>
+  {% if request.query_params.get("error") == "invalid" %}
+  <div class="alert alert-error">Invalid username or password.</div>
+  {% elif request.query_params.get("error") %}
   <div class="alert alert-error">Authentication failed. Please try again.</div>
   {% endif %}
+  <form method="post" action="/auth/local">
+    <div class="field">
+      <span class="field-label">Username</span>
+      <input type="text" name="username" class="select-input" required autofocus>
+    </div>
+    <div class="field">
+      <span class="field-label">Password</span>
+      <input type="password" name="password" class="select-input" required>
+    </div>
+    <button type="submit" class="btn btn-primary" style="width:100%;margin-top:0.75rem">Sign In</button>
+  </form>
+  <div style="text-align:center;margin:1.25rem 0;color:var(--text-muted);font-size:0.85rem">— or —</div>
   <form method="post" action="/auth/plex/start">
-    <button type="submit" class="btn btn-plex">Sign in with Plex</button>
+    <button type="submit" class="btn btn-plex" style="width:100%">Sign in with Plex</button>
   </form>
 </div>
 {% endblock %}

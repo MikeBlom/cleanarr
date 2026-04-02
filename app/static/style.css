@@ -413,6 +413,7 @@ a:hover { text-decoration: underline; }
 fieldset { border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
 legend { font-weight: 600; font-size: 0.95rem; padding: 0 0.4rem; color: var(--text-muted); }
 label { display: block; margin-bottom: 0.5rem; cursor: pointer; }
+input[type=checkbox] { width: 1.1rem; height: 1.1rem; cursor: pointer; }
 label input[type=checkbox] { margin-right: 0.4rem; }
 
 /* Audio track selector / form inputs */
@@ -440,6 +441,7 @@ label input[type=checkbox] { margin-right: 0.4rem; }
 .alert-success { background: rgba(39,174,96,0.12); border: 1px solid var(--success); color: var(--success); }
 .alert-error { background: rgba(231,76,60,0.15); border: 1px solid var(--danger); color: var(--alert-error-text); }
 .alert-warn { background: rgba(230,126,34,0.12); border: 1px solid var(--alert-warn-accent); color: var(--alert-warn-accent); }
+.alert-info { background: rgba(41,128,185,0.12); border: 1px solid var(--running); color: var(--running); }
 
 /* ── Login box ─────────────────────────────────────────────────────── */
 .login-box {
@@ -641,6 +643,23 @@ h2 { font-size: 1.2rem; margin: 1.5rem 0 0.75rem; }
   color: var(--text-muted);
   margin-top: 0.75rem;
 }
+
+/* ── Bulk action bar ───────────────────────────────────────────────── */
+.bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--brand);
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+
+/* Sortable column headers */
+th.sortable:hover { color: var(--brand-light); }
+.sort-arrow { font-size: 0.75rem; }
 
 /* ── Settings anchor nav ───────────────────────────────────────────── */
 .settings-nav {

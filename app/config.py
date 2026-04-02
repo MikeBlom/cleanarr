@@ -33,6 +33,13 @@ class Settings(BaseSettings):
     SESSION_COOKIE_NAME: str = "cleanarr_session"
     SESSION_MAX_AGE_DAYS: int = 30
 
+    # Email (optional — for sending invite emails)
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = ""
+
     # Worker
     WORKER_ENABLED: bool = True
     WORKER_POLL_INTERVAL_SEC: int = 2

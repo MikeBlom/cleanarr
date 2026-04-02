@@ -125,6 +125,12 @@
 
   <div id="page-content" class="{% if user %}page-content{% endif %}">
     <div class="{% if user %}page-content__body{% endif %}">
+      {% if flash_msg %}
+      <div class="alert alert-{{ flash_level }}" id="flash-bar" style="display:flex;justify-content:space-between;align-items:center">
+        <span>{{ flash_msg }}</span>
+        <button onclick="this.parentElement.remove()" style="background:none;border:none;color:inherit;cursor:pointer;font-size:1.2rem;padding:0 0.25rem">&times;</button>
+      </div>
+      {% endif %}
       {% block content %}{% endblock %}
     </div>
   </div>

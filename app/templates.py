@@ -1,10 +1,30 @@
 import hashlib
 import json
 from pathlib import Path
+from typing import Any
 
 from fastapi.templating import Jinja2Templates
+from starlette.requests import Request
+from starlette.responses import Response
 
-templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+
+class _FlashTemplates(Jinja2Templates):
+    """Jinja2Templates subclass that auto-injects flash messages and clears the cookie."""
+
+    def TemplateResponse(self, name: str, context: dict[str, Any], **kwargs: Any) -> Response:
+        request: Request = context.get("request")  # type: ignore[assignment]
+        if request and not context.get("flash_msg"):
+            from .auth.sessions import get_flash
+            flash = get_flash(request)
+            if flash:
+                context["flash_msg"], context["flash_level"] = flash
+        resp = super().TemplateResponse(name, context, **kwargs)
+        if context.get("flash_msg"):
+            resp.delete_cookie("cleanarr_flash")
+        return resp
+
+
+templates = _FlashTemplates(directory=str(Path(__file__).parent / "templates"))
 templates.env.filters["from_json"] = json.loads
 
 # Cache-busting hash for static CSS

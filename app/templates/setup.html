@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Setup – CleanArr{% endblock %}
+{% block content %}
+<div class="login-box">
+  <h1>CleanArr Setup</h1>
+  <p>Create your admin account to get started.</p>
+  {% if errors %}
+  <div class="alert alert-error">
+    {% for e in errors %}<div>{{ e }}</div>{% endfor %}
+  </div>
+  {% endif %}
+  <form method="post" action="/setup">
+    <div class="field">
+      <span class="field-label">Username</span>
+      <input type="text" name="username" class="select-input" value="{{ username | default('', true) }}" required autofocus>
+    </div>
+    <div class="field">
+      <span class="field-label">Password</span>
+      <input type="password" name="password" class="select-input" required minlength="8">
+      <span class="field-hint">Minimum 8 characters.</span>
+    </div>
+    <div class="field">
+      <span class="field-label">Confirm Password</span>
+      <input type="password" name="password_confirm" class="select-input" required>
+    </div>
+    <button type="submit" class="btn btn-primary" style="width:100%;margin-top:1rem">Create Admin Account</button>
+  </form>
+</div>
+{% endblock %}

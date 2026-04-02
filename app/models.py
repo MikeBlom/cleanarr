@@ -46,9 +46,11 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    plex_id: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    plex_id: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
     username: Mapped[str] = mapped_column(String(128), nullable=False)
     email: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    auth_method: Mapped[str] = mapped_column(String(32), default="plex", nullable=False)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     is_approved: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -148,6 +150,18 @@ class ConversionJob(Base):
     __table_args__ = (
         Index("ix_jobs_status_created", "status", "created_at"),
     )
+
+
+class Invitation(Base):
+    __tablename__ = "invitations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    email: Mapped[str] = mapped_column(String(256), nullable=False)
+    token: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    invited_by: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
 class AppSetting(Base):

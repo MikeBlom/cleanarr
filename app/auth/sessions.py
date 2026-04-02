@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import json
 import secrets
 from datetime import datetime, timedelta
 
-from fastapi import Response
+from fastapi import Request, Response
 from sqlalchemy.orm import Session
 
 from ..config import settings
@@ -51,3 +52,22 @@ def get_session(db: Session, token: str) -> UserSession | None:
         .first()
     )
     return session
+
+
+def set_flash(response: Response, message: str, level: str = "success") -> None:
+    response.set_cookie(
+        "cleanarr_flash",
+        json.dumps({"msg": message, "level": level}),
+        max_age=10, httponly=True, samesite="lax",
+    )
+
+
+def get_flash(request: Request) -> tuple[str, str] | None:
+    raw = request.cookies.get("cleanarr_flash")
+    if not raw:
+        return None
+    try:
+        data = json.loads(raw)
+        return data["msg"], data["level"]
+    except (json.JSONDecodeError, KeyError):
+        return None

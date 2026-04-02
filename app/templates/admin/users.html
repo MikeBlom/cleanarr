@@ -1,48 +1,174 @@
 {% extends "base.html" %}
 {% block title %}Users – Admin – CleanArr{% endblock %}
 {% block content %}
-<h1>Users</h1>
+<div class="toolbar">
+  <h1>Users</h1>
+  <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+    <form method="post" action="/admin/users/import-plex" style="display:flex">
+      <button type="submit" class="btn" style="font:inherit;line-height:inherit"><i class="fa-solid fa-download"></i> Import from Plex</button>
+    </form>
+    <a href="/admin/users/invite" class="btn"><i class="fa-solid fa-envelope"></i> Invite User</a>
+    <a href="/admin/users/create" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Create Local User</a>
+  </div>
+</div>
+
+<form method="post" action="/admin/users/bulk" id="bulk-form">
+  <div class="bulk-bar hidden" id="bulk-bar">
+    <span id="bulk-count">0</span> selected
+    <select name="action" class="select-input" style="width:auto;display:inline-block;padding:0.25rem 0.5rem;font-size:0.85rem">
+      <option value="approve">Approve</option>
+      <option value="revoke">Revoke</option>
+      <option value="invite">Invite</option>
+      <option value="delete">Delete</option>
+    </select>
+    <button type="submit" class="btn btn-sm btn-primary" onclick="if(this.form.action_select.value==='delete')return confirm('Delete selected users?')">Apply</button>
+  </div>
+
+  <table class="data-table" id="users-table">
+    <thead>
+      <tr>
+        <th style="width:2rem"><input type="checkbox" id="select-all"></th>
+        <th class="sortable" data-col="0">Username <span class="sort-arrow"></span></th>
+        <th class="sortable" data-col="1">Auth <span class="sort-arrow"></span></th>
+        <th>Plex ID</th>
+        <th class="sortable" data-col="3">Email <span class="sort-arrow"></span></th>
+        <th class="sortable" data-col="4">Admin <span class="sort-arrow"></span></th>
+        <th class="sortable" data-col="5">Approved <span class="sort-arrow"></span></th>
+        <th class="sortable" data-col="6">Last Login <span class="sort-arrow"></span></th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td>{% if u.id != user.id %}<input type="checkbox" name="user_ids" value="{{ u.id }}" class="user-cb">{% endif %}</td>
+        <td>{{ u.username }}</td>
+        <td><span class="badge badge-queued">{{ u.auth_method or "plex" }}</span></td>
+        <td>{% if u.plex_id %}<code>{{ u.plex_id }}</code>{% else %}—{% endif %}</td>
+        <td>{{ u.email or "—" }}</td>
+        <td>{% if u.is_admin %}✓{% endif %}</td>
+        <td>{% if u.is_approved %}✓{% endif %}</td>
+        <td>{{ u.last_login.strftime("%Y-%m-%d %H:%M") if u.last_login else "—" }}</td>
+        <td class="action-cell">
+          {% if not u.is_approved %}
+          <form method="post" action="/admin/users/{{ u.id }}/approve" style="display:inline">
+            <button class="btn btn-sm btn-primary" type="submit">Approve</button>
+          </form>
+          {% else %}
+          <form method="post" action="/admin/users/{{ u.id }}/revoke" style="display:inline">
+            <button class="btn btn-sm btn-danger" type="submit">Revoke</button>
+          </form>
+          {% endif %}
+          {% if u.id != user.id %}
+          <form method="post" action="/admin/users/{{ u.id }}/toggle-admin" style="display:inline">
+            <button class="btn btn-sm" type="submit">
+              {% if u.is_admin %}Remove Admin{% else %}Make Admin{% endif %}
+            </button>
+          </form>
+          {% endif %}
+          {% if (u.auth_method or "plex") == "local" %}
+          <form method="post" action="/admin/users/{{ u.id }}/reset-password" style="display:inline" onsubmit="var p=prompt('New password (min 8 chars):');if(!p||p.length<8){alert('Password must be at least 8 characters.');return false;}this.querySelector('[name=new_password]').value=p;">
+            <input type="hidden" name="new_password" value="">
+            <button class="btn btn-sm" type="submit">Reset Password</button>
+          </form>
+          {% endif %}
+          {% if not u.last_login %}
+          <a href="/admin/users/invite{% if u.email %}?email={{ u.email | urlencode }}{% endif %}" class="btn btn-sm"><i class="fa-solid fa-envelope"></i> Invite</a>
+          {% endif %}
+          {% if u.id != user.id %}
+          <form method="post" action="/admin/users/{{ u.id }}/delete" style="display:inline" onsubmit="return confirm('Delete user {{ u.username }}?')">
+            <button class="btn btn-sm btn-danger" type="submit"><i class="fa-solid fa-trash"></i></button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</form>
+
+{% if invitations %}
+<h2>Pending Invitations</h2>
 <table class="data-table">
   <thead>
     <tr>
-      <th>Username</th>
-      <th>Plex ID</th>
       <th>Email</th>
-      <th>Admin</th>
-      <th>Approved</th>
-      <th>Last Login</th>
-      <th>Actions</th>
+      <th>Invited</th>
+      <th>Expires</th>
+      <th>Status</th>
     </tr>
   </thead>
   <tbody>
-    {% for u in users %}
+    {% for inv in invitations %}
     <tr>
-      <td>{{ u.username }}</td>
-      <td><code>{{ u.plex_id }}</code></td>
-      <td>{{ u.email or "—" }}</td>
-      <td>{% if u.is_admin %}✓{% endif %}</td>
-      <td>{% if u.is_approved %}✓{% endif %}</td>
-      <td>{{ u.last_login.strftime("%Y-%m-%d %H:%M") if u.last_login else "—" }}</td>
+      <td>{{ inv.email }}</td>
+      <td>{{ inv.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+      <td>{{ inv.expires_at.strftime("%Y-%m-%d %H:%M") }}</td>
       <td>
-        {% if not u.is_approved %}
-        <form method="post" action="/admin/users/{{ u.id }}/approve" style="display:inline">
-          <button class="btn btn-sm btn-primary" type="submit">Approve</button>
-        </form>
+        {% if inv.accepted_at %}
+        <span class="badge badge-completed">Accepted</span>
+        {% elif inv.expires_at < now %}
+        <span class="badge badge-failed">Expired</span>
         {% else %}
-        <form method="post" action="/admin/users/{{ u.id }}/revoke" style="display:inline">
-          <button class="btn btn-sm btn-danger" type="submit">Revoke</button>
-        </form>
-        {% endif %}
-        {% if u.id != user.id %}
-        <form method="post" action="/admin/users/{{ u.id }}/toggle-admin" style="display:inline">
-          <button class="btn btn-sm" type="submit">
-            {% if u.is_admin %}Remove Admin{% else %}Make Admin{% endif %}
-          </button>
-        </form>
+        <span class="badge badge-running">Pending</span>
         {% endif %}
       </td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
+{% endif %}
+
+<script>
+(function(){
+  // Bulk selection
+  var selectAll = document.getElementById('select-all');
+  var bulkBar = document.getElementById('bulk-bar');
+  var bulkCount = document.getElementById('bulk-count');
+  var checkboxes = document.querySelectorAll('.user-cb');
+
+  function updateBulk(){
+    var checked = document.querySelectorAll('.user-cb:checked').length;
+    bulkCount.textContent = checked;
+    if(checked > 0) bulkBar.classList.remove('hidden');
+    else bulkBar.classList.add('hidden');
+  }
+
+  selectAll.addEventListener('change', function(){
+    checkboxes.forEach(function(cb){ cb.checked = selectAll.checked; });
+    updateBulk();
+  });
+  checkboxes.forEach(function(cb){ cb.addEventListener('change', updateBulk); });
+
+  // Column sorting
+  var table = document.getElementById('users-table');
+  var tbody = table.querySelector('tbody');
+  var headers = table.querySelectorAll('th.sortable');
+  var sortCol = -1, sortAsc = true;
+
+  headers.forEach(function(th){
+    th.style.cursor = 'pointer';
+    th.addEventListener('click', function(){
+      var col = parseInt(th.dataset.col);
+      if(sortCol === col) sortAsc = !sortAsc;
+      else { sortCol = col; sortAsc = true; }
+
+      // Update arrows
+      headers.forEach(function(h){ h.querySelector('.sort-arrow').textContent = ''; });
+      th.querySelector('.sort-arrow').textContent = sortAsc ? ' ▲' : ' ▼';
+
+      var rows = Array.from(tbody.querySelectorAll('tr'));
+      rows.sort(function(a, b){
+        // +1 because first column is checkbox
+        var cellA = a.cells[col + 1].textContent.trim().toLowerCase();
+        var cellB = b.cells[col + 1].textContent.trim().toLowerCase();
+        if(cellA < cellB) return sortAsc ? -1 : 1;
+        if(cellA > cellB) return sortAsc ? 1 : -1;
+        return 0;
+      });
+      rows.forEach(function(r){ tbody.appendChild(r); });
+    });
+  });
+})();
+</script>
 {% endblock %}

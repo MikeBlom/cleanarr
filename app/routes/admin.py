@@ -1,13 +1,16 @@
 from __future__ import annotations
 
-from datetime import datetime
+import secrets
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
+from ..auth.password import hash_password
+from ..auth.sessions import set_flash
 from ..deps import get_db, require_admin
-from ..models import AppSetting, ConversionJob, ConversionRequest, JobStatus, RequestStatus, User
+from ..models import AppSetting, ConversionJob, ConversionRequest, Invitation, JobStatus, RequestStatus, User
 from ..templates import templates
 
 router = APIRouter(prefix="/admin")
@@ -25,9 +28,10 @@ async def admin_users(
     user: User = Depends(require_admin),
 ):
     users = db.query(User).order_by(User.created_at.desc()).all()
+    invitations = db.query(Invitation).order_by(Invitation.created_at.desc()).limit(50).all()
     return templates.TemplateResponse(
         "admin/users.html",
-        {"request": request, "user": user, "users": users},
+        {"request": request, "user": user, "users": users, "invitations": invitations, "now": datetime.utcnow()},
     )
 
 
@@ -73,6 +77,255 @@ async def toggle_admin(
     target.is_admin = not target.is_admin
     db.commit()
     return RedirectResponse("/admin/users", status_code=303)
+
+
+@router.post("/users/{user_id}/delete")
+async def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    target = db.query(User).filter(User.id == user_id).first()
+    if not target:
+        raise HTTPException(status_code=404)
+    if target.id == admin.id:
+        redirect = RedirectResponse("/admin/users", status_code=303)
+        set_flash(redirect, "You cannot delete your own account.", "error")
+        return redirect
+    name = target.username
+    db.delete(target)
+    db.commit()
+    redirect = RedirectResponse("/admin/users", status_code=303)
+    set_flash(redirect, f"Deleted user {name}.", "success")
+    return redirect
+
+
+@router.post("/users/bulk")
+async def bulk_user_action(
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    form = await request.form()
+    action = form.get("action", "")
+    user_ids = [int(x) for x in form.getlist("user_ids") if x.isdigit()]
+
+    if not user_ids or action not in ("approve", "revoke", "delete", "invite"):
+        redirect = RedirectResponse("/admin/users", status_code=303)
+        set_flash(redirect, "No action taken.", "info")
+        return redirect
+
+    targets = db.query(User).filter(User.id.in_(user_ids)).all()
+    count = 0
+
+    if action == "invite":
+        from ..config import settings as cfg
+        from ..email import is_email_configured, send_invite_email
+        invited = 0
+        no_email = 0
+        for target in targets:
+            if target.id == admin.id:
+                continue
+            if not target.email:
+                no_email += 1
+                continue
+            token = secrets.token_urlsafe(48)
+            inv = Invitation(
+                email=target.email,
+                token=token,
+                invited_by=admin.id,
+                expires_at=datetime.utcnow() + timedelta(days=7),
+            )
+            db.add(inv)
+            invite_url = f"{cfg.BASE_URL}/invite/{token}"
+            if is_email_configured():
+                send_invite_email(target.email, invite_url)
+            invited += 1
+        db.commit()
+        redirect = RedirectResponse("/admin/users", status_code=303)
+        msg = f"Invited {invited} user{'s' if invited != 1 else ''}."
+        if no_email:
+            msg += f" {no_email} skipped (no email on file)."
+        set_flash(redirect, msg, "success" if invited else "warn")
+        return redirect
+
+    for target in targets:
+        if target.id == admin.id:
+            continue
+        if action == "approve":
+            target.is_approved = True
+            count += 1
+        elif action == "revoke":
+            target.is_approved = False
+            count += 1
+        elif action == "delete":
+            db.delete(target)
+            count += 1
+    db.commit()
+
+    labels = {"approve": "approved", "revoke": "revoked", "delete": "deleted"}
+    redirect = RedirectResponse("/admin/users", status_code=303)
+    set_flash(redirect, f"{labels[action].capitalize()} {count} user{'s' if count != 1 else ''}.", "success")
+    return redirect
+
+
+@router.get("/users/create", response_class=HTMLResponse)
+async def create_user_form(
+    request: Request,
+    user: User = Depends(require_admin),
+):
+    return templates.TemplateResponse(
+        "admin/create_user.html",
+        {"request": request, "user": user},
+    )
+
+
+@router.post("/users/create")
+async def create_user(
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+    username: str = Form(...),
+    password: str = Form(...),
+    password_confirm: str = Form(...),
+    is_admin: bool = Form(False),
+):
+    errors = []
+    if not username.strip():
+        errors.append("Username is required.")
+    if len(password) < 8:
+        errors.append("Password must be at least 8 characters.")
+    if password != password_confirm:
+        errors.append("Passwords do not match.")
+    existing = db.query(User).filter(User.username == username.strip(), User.auth_method == "local").first()
+    if existing:
+        errors.append("A local user with that username already exists.")
+
+    if errors:
+        return templates.TemplateResponse("admin/create_user.html", {
+            "request": request, "user": admin,
+            "errors": errors, "form_username": username, "form_is_admin": is_admin,
+        })
+
+    new_user = User(
+        username=username.strip(),
+        auth_method="local",
+        password_hash=hash_password(password),
+        is_admin=is_admin,
+        is_approved=True,
+    )
+    db.add(new_user)
+    db.commit()
+    return RedirectResponse("/admin/users", status_code=303)
+
+
+@router.post("/users/{user_id}/reset-password")
+async def reset_password(
+    user_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+    new_password: str = Form(...),
+):
+    target = db.query(User).filter(User.id == user_id).first()
+    if not target or target.auth_method != "local":
+        raise HTTPException(status_code=404)
+    if len(new_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters.")
+    target.password_hash = hash_password(new_password)
+    db.commit()
+    return RedirectResponse("/admin/users", status_code=303)
+
+
+@router.post("/users/import-plex")
+async def import_plex_users(
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    from .. import app_settings as _as
+    from ..auth.plex import fetch_server_users
+
+    server_url = _as.get(db, "plex_server_url")
+    admin_token = _as.get(db, "plex_admin_token")
+
+    redirect = RedirectResponse("/admin/users", status_code=303)
+    try:
+        plex_users = fetch_server_users(server_url, admin_token)
+    except Exception as e:
+        set_flash(redirect, f"Failed to fetch Plex users: {e}", "error")
+        return redirect
+
+    existing_users = {u.plex_id: u for u in db.query(User).filter(User.plex_id.isnot(None)).all()}
+    imported = 0
+    updated = 0
+    for pu in plex_users:
+        email = pu.get("email") or None
+        if pu["id"] not in existing_users:
+            db.add(User(
+                plex_id=pu["id"],
+                username=pu["username"],
+                email=email,
+                auth_method="plex",
+                is_approved=False,
+            ))
+            imported += 1
+        elif email and not existing_users[pu["id"]].email:
+            existing_users[pu["id"]].email = email
+            updated += 1
+
+    if imported or updated:
+        db.commit()
+        parts = []
+        if imported:
+            parts.append(f"Imported {imported} new user{'s' if imported != 1 else ''}")
+        if updated:
+            parts.append(f"updated emails for {updated} existing user{'s' if updated != 1 else ''}")
+        set_flash(redirect, f"{', '.join(parts)} from Plex.", "success")
+    else:
+        set_flash(redirect, "No new users to import — all Plex users are already in CleanArr.", "info")
+    return redirect
+
+
+@router.get("/users/invite", response_class=HTMLResponse)
+async def invite_form(
+    request: Request,
+    user: User = Depends(require_admin),
+):
+    return templates.TemplateResponse("admin/invite.html", {"request": request, "user": user})
+
+
+@router.post("/users/invite")
+async def invite_user(
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+    email: str = Form(...),
+):
+    from ..config import settings as cfg
+    from ..email import is_email_configured, send_invite_email
+
+    token = secrets.token_urlsafe(48)
+    invitation = Invitation(
+        email=email.strip(),
+        token=token,
+        invited_by=admin.id,
+        expires_at=datetime.utcnow() + timedelta(days=7),
+    )
+    db.add(invitation)
+    db.commit()
+
+    invite_url = f"{cfg.BASE_URL}/invite/{token}"
+    redirect = RedirectResponse("/admin/users", status_code=303)
+
+    if is_email_configured():
+        if send_invite_email(email.strip(), invite_url):
+            set_flash(redirect, f"Invite sent to {email}.", "success")
+        else:
+            set_flash(redirect, f"Invite created but email failed to send. Link: {invite_url}", "warn")
+    else:
+        set_flash(redirect, f"Invite link (no SMTP configured): {invite_url}", "info")
+
+    return redirect
 
 
 @router.get("/queue", response_class=HTMLResponse)

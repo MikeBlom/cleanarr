@@ -40,8 +40,12 @@ app.include_router(admin.router)
 async def index(request: Request):
     from .deps import get_current_user
     from .database import SessionLocal
+    from .models import User
     db = SessionLocal()
     try:
+        has_users = db.query(User.id).first() is not None
+        if not has_users:
+            return RedirectResponse("/setup", status_code=302)
         user = get_current_user(request, db)
     finally:
         db.close()

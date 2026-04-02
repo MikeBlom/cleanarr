@@ -91,4 +91,12 @@ def _migrate() -> None:
             if col_name not in req_cols:
                 conn.execute(text(f"ALTER TABLE conversion_requests ADD COLUMN {col}"))
 
+        # users migrations
+        result3 = conn.execute(text("PRAGMA table_info(users)"))
+        user_cols = {row[1] for row in result3}
+        if "auth_method" not in user_cols:
+            conn.execute(text("ALTER TABLE users ADD COLUMN auth_method VARCHAR(32) NOT NULL DEFAULT 'plex'"))
+        if "password_hash" not in user_cols:
+            conn.execute(text("ALTER TABLE users ADD COLUMN password_hash VARCHAR(255)"))
+
         conn.commit()

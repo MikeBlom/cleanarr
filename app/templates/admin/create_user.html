@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Create User – Admin – CleanArr{% endblock %}
+{% block content %}
+<h1>Create Local User</h1>
+{% if errors %}
+<div class="alert alert-error">
+  {% for e in errors %}<div>{{ e }}</div>{% endfor %}
+</div>
+{% endif %}
+<div class="request-form" style="max-width:480px">
+  <form method="post" action="/admin/users/create">
+    <div class="field">
+      <span class="field-label">Username</span>
+      <input type="text" name="username" class="select-input" value="{{ form_username | default('', true) }}" required autofocus>
+    </div>
+    <div class="field">
+      <span class="field-label">Password</span>
+      <input type="password" name="password" class="select-input" required minlength="8">
+      <span class="field-hint">Minimum 8 characters.</span>
+    </div>
+    <div class="field">
+      <span class="field-label">Confirm Password</span>
+      <input type="password" name="password_confirm" class="select-input" required>
+    </div>
+    <label style="display:flex;align-items:center;gap:0.5rem;margin:1rem 0">
+      <input type="checkbox" name="is_admin" value="true" {% if form_is_admin %}checked{% endif %}>
+      Grant admin access
+    </label>
+    <div style="display:flex;gap:0.5rem">
+      <button type="submit" class="btn btn-primary">Create User</button>
+      <a href="/admin/users" class="btn">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

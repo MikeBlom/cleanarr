@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Invite User – Admin – CleanArr{% endblock %}
+{% block content %}
+<h1>Invite User</h1>
+<div class="request-form" style="max-width:480px">
+  <p class="muted" style="margin-bottom:1rem">Send an invite link to a new user. If SMTP is configured, the link will be emailed. Otherwise, you'll receive the link to share manually.</p>
+  <form method="post" action="/admin/users/invite">
+    <div class="field">
+      <span class="field-label">Email Address</span>
+      <input type="email" name="email" class="select-input" required autofocus placeholder="user@example.com" value="{{ request.query_params.get('email', '') }}">
+    </div>
+    <div style="display:flex;gap:0.5rem;margin-top:1rem">
+      <button type="submit" class="btn btn-primary">Send Invite</button>
+      <a href="/admin/users" class="btn">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
