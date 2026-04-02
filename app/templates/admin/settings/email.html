@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Email – Settings – CleanArr{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+{% include "admin/settings/_nav.html" %}
+<form method="post" action="/admin/settings/email">
+  <fieldset>
+    <legend>SMTP Configuration</legend>
+    <span class="field-hint" style="margin-bottom:.75rem;display:block">Configure outgoing email for invite and notification emails. For Gmail, use an <a href="https://myaccount.google.com/apppasswords" target="_blank">App Password</a>.</span>
+    <label class="field">
+      <span class="field-label">SMTP Host</span>
+      <input type="text" name="smtp_host" value="{{ s.smtp_host }}" class="select-input" placeholder="smtp.gmail.com">
+    </label>
+    <label class="field">
+      <span class="field-label">SMTP Port</span>
+      <input type="number" name="smtp_port" value="{{ s.smtp_port }}" class="select-input" placeholder="587">
+    </label>
+    <label class="field">
+      <span class="field-label">SMTP Username</span>
+      <input type="text" name="smtp_user" value="{{ s.smtp_user }}" class="select-input" placeholder="you@gmail.com" autocomplete="off">
+    </label>
+    <label class="field">
+      <span class="field-label">SMTP Password</span>
+      <input type="password" name="smtp_password" value="{{ s.smtp_password }}" class="select-input" placeholder="app password" autocomplete="off">
+    </label>
+    <label class="field">
+      <span class="field-label">From Address</span>
+      <input type="email" name="smtp_from" value="{{ s.smtp_from }}" class="select-input" placeholder="noreply@example.com">
+    </label>
+  </fieldset>
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Save</button>
+  </div>
+</form>
+<form method="post" action="/admin/settings/email/test" style="margin-top:1rem">
+  <button type="submit" class="btn">Send test email to {{ user.email or 'yourself' }}</button>
+  <span class="field-hint" style="display:inline;margin-left:0.5rem">Sends a test email using the saved SMTP settings.</span>
+</form>
+{% endblock %}
