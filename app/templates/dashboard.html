@@ -18,4 +18,75 @@
   </a>
   {% endif %}
 </div>
+
+{% if cleaned_movies %}
+<h2 style="margin-top:2rem;">Cleaned Movies</h2>
+<table class="data-table">
+  <thead>
+    <tr>
+      <th class="sortable">Title</th>
+      <th class="sortable">Profanity</th>
+      <th class="sortable">Nudity</th>
+      <th class="sortable">Violence</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for movie in cleaned_movies %}
+    <tr>
+      <td><a href="/requests/{{ movie.request_id }}">{{ movie.title }}</a></td>
+      <td>
+        {% if movie.profanity_count > 0 %}
+          <a href="#" class="report-count report-count--profanity"
+             hx-get="/requests/{{ movie.request_id }}/content-report?type=profanity"
+             hx-target="#report-modal-body"
+             hx-swap="innerHTML"
+             onclick="document.getElementById('report-modal').showModal()">
+            {{ movie.profanity_count }}
+          </a>
+        {% else %}
+          <span class="muted">0</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if movie.nudity_count > 0 %}
+          <a href="#" class="report-count report-count--nudity"
+             hx-get="/requests/{{ movie.request_id }}/content-report?type=nudity"
+             hx-target="#report-modal-body"
+             hx-swap="innerHTML"
+             onclick="document.getElementById('report-modal').showModal()">
+            {{ movie.nudity_count }}
+          </a>
+        {% else %}
+          <span class="muted">0</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if movie.violence_count > 0 %}
+          <a href="#" class="report-count report-count--violence"
+             hx-get="/requests/{{ movie.request_id }}/content-report?type=violence"
+             hx-target="#report-modal-body"
+             hx-swap="innerHTML"
+             onclick="document.getElementById('report-modal').showModal()">
+            {{ movie.violence_count }}
+          </a>
+        {% else %}
+          <span class="muted">0</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<dialog id="report-modal" class="report-modal">
+  <div class="report-modal__header">
+    <h3>Content Report</h3>
+    <button onclick="this.closest('dialog').close()" class="report-modal__close">&times;</button>
+  </div>
+  <div id="report-modal-body">
+    <p class="muted">Loading...</p>
+  </div>
+</dialog>
+{% endif %}
+
 {% endblock %}

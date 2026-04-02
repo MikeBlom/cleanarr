@@ -751,3 +751,40 @@ async def edit_request(
 
     db.commit()
     return RedirectResponse(f"/requests/{req_id}", status_code=303)
+
+
+@router.get("/requests/{req_id}/content-report", response_class=HTMLResponse)
+async def request_content_report(
+    request: Request,
+    req_id: int,
+    type: str = "profanity",
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    conv_req = (
+        db.query(ConversionRequest).filter(ConversionRequest.id == req_id).first()
+    )
+    if not conv_req:
+        raise HTTPException(status_code=404)
+
+    entries = []
+    for job in conv_req.jobs:
+        if job.status != JobStatus.completed or not job.content_report:
+            continue
+        try:
+            report = _json.loads(job.content_report)
+        except Exception:
+            continue
+        for entry in report:
+            if entry.get("type") == type:
+                entries.append({**entry, "job_title": job.title})
+
+    return templates.TemplateResponse(
+        "requests/_content_report_detail.html",
+        {
+            "request": request,
+            "entries": entries,
+            "filter_type": type,
+            "conv_request": conv_req,
+        },
+    )
