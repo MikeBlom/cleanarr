@@ -16,3 +16,5 @@ services:
     environment:
       - DATABASE_URL=sqlite:////data/cleanarr.db
       - WORKER_ENABLED=false
+      - UPLOAD_DIR=/data/uploads
+      - UPLOAD_DIR_HOST=/home/mike/cleanarr/data/uploads

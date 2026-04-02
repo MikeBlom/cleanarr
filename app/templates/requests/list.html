@@ -9,7 +9,7 @@
   <thead>
     <tr>
       <th class="sortable">Title</th>
-      <th class="sortable">Type</th>
+      <th class="sortable">Source</th>
       <th class="sortable">Status</th>
       <th class="sortable">Requested by</th>
       <th class="sortable">Requested</th>
@@ -20,7 +20,7 @@
     {% for req in requests %}
     <tr>
       <td>{{ req.title }}</td>
-      <td>{{ req.request_type.value }}</td>
+      <td><span class="badge badge-queued">{{ (req.source or "plex") | capitalize }}</span></td>
       <td><span class="badge badge-{{ req.status.value }}">{{ req.status.value }}</span></td>
       <td>{{ req.user.username if req.user else "—" }}</td>
       <td>{{ req.created_at.strftime("%Y-%m-%d %H:%M") }}</td>

@@ -91,6 +91,12 @@ def _migrate() -> None:
             if col_name not in req_cols:
                 conn.execute(text(f"ALTER TABLE conversion_requests ADD COLUMN {col}"))
 
+        # conversion_requests source/upload migrations
+        if "source" not in req_cols:
+            conn.execute(text("ALTER TABLE conversion_requests ADD COLUMN source VARCHAR(32) NOT NULL DEFAULT 'plex'"))
+        if "original_filename" not in req_cols:
+            conn.execute(text("ALTER TABLE conversion_requests ADD COLUMN original_filename VARCHAR(512)"))
+
         # users migrations
         result3 = conn.execute(text("PRAGMA table_info(users)"))
         user_cols = {row[1] for row in result3}

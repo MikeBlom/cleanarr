@@ -78,8 +78,10 @@ class ConversionRequest(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    plex_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    plex_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
     title: Mapped[str] = mapped_column(String(512), nullable=False)
+    source: Mapped[str] = mapped_column(String(32), default="plex", nullable=False)
+    original_filename: Mapped[str | None] = mapped_column(String(512), nullable=True)
     request_type: Mapped[RequestType] = mapped_column(Enum(RequestType), nullable=False)
     filter_profanity: Mapped[bool] = mapped_column(Boolean, default=True)
     filter_nudity: Mapped[bool] = mapped_column(Boolean, default=False)

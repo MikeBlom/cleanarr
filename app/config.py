@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     SESSION_COOKIE_NAME: str = "cleanarr_session"
     SESSION_MAX_AGE_DAYS: int = 30
 
+    # Uploads
+    MAX_UPLOAD_SIZE_MB: int = 10240  # 10 GB
+    UPLOAD_DIR: str = "/data/uploads"  # where the web container writes files
+    UPLOAD_DIR_HOST: str = ""  # host-mapped path stored in DB for the worker (empty = same as UPLOAD_DIR)
+
     # Email (optional — for sending invite emails)
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587

@@ -532,14 +532,16 @@ def _run_job(job_id: int) -> None:
             job.content_report = _build_content_report(job.input_file)
 
             # Trigger Plex library refresh so editions/versions appear immediately
-            try:
-                from .plex.client import PlexClient
-                plex = PlexClient(db)
-                section_id = plex.get_section_id_for_item(job.plex_key)
-                if section_id:
-                    plex.refresh_section(section_id)
-            except Exception:
-                pass  # best-effort, don't fail the job
+            # (skip for user uploads — they don't go back to Plex)
+            if req.source != "upload":
+                try:
+                    from .plex.client import PlexClient
+                    plex = PlexClient(db)
+                    section_id = plex.get_section_id_for_item(job.plex_key)
+                    if section_id:
+                        plex.refresh_section(section_id)
+                except Exception:
+                    pass  # best-effort, don't fail the job
 
         db.commit()
         _rollup_request(db, job.request_id)

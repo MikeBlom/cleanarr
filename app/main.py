@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .config import settings
 from .database import init_db
-from .routes import admin, auth, browse, jobs, requests
+from .routes import admin, auth, browse, jobs, requests, uploads
 from .templates import templates
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -20,7 +20,17 @@ async def lifespan(app: FastAPI):
     yield
 
 
+from fastapi.exceptions import HTTPException as StarletteHTTPException
+
 app = FastAPI(title="CleanArr", lifespan=lifespan, docs_url=None, redoc_url=None)
+
+
+@app.exception_handler(404)
+async def not_found_handler(request: Request, exc):
+    from .auth.sessions import set_flash
+    redirect = RedirectResponse("/", status_code=302)
+    set_flash(redirect, "The page you were looking for was not found.", "info")
+    return redirect
 
 app.mount(
     "/static",
@@ -33,6 +43,7 @@ app.include_router(browse.router)
 app.include_router(browse.thumb_router)
 app.include_router(requests.router)
 app.include_router(jobs.router)
+app.include_router(uploads.router)
 app.include_router(admin.router)
 
 

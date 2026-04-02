@@ -432,6 +432,14 @@ async def delete_request(
         for job in conv_req.jobs:
             _delete_job_files(job)
 
+    # For uploads, remove the entire upload directory
+    if (conv_req.source or "plex") == "upload":
+        import shutil
+        for job in conv_req.jobs:
+            if job.input_file:
+                upload_dir = Path(job.input_file).parent
+                shutil.rmtree(upload_dir, ignore_errors=True)
+
     db.delete(conv_req)
     db.commit()
     return RedirectResponse("/requests", status_code=303)
@@ -448,6 +456,19 @@ async def retry_request(
         raise HTTPException(status_code=404)
     if not user.is_admin and conv_req.user_id != user.id:
         raise HTTPException(status_code=403)
+
+    # For uploads, just re-queue failed/skipped jobs without Plex re-fetch
+    if (conv_req.source or "plex") == "upload":
+        for job in conv_req.jobs:
+            if job.status in (JobStatus.failed, JobStatus.skipped):
+                job.status = JobStatus.queued
+                job.error_message = None
+                job.log_output = None
+                job.started_at = None
+                job.finished_at = None
+        conv_req.status = RequestStatus.queued
+        db.commit()
+        return RedirectResponse(f"/requests/{req_id}", status_code=303)
 
     client = PlexClient(db)
     try:

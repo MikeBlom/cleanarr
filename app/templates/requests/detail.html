@@ -45,6 +45,12 @@
   {% if not has_running %}
   <button class="btn btn-sm btn-danger" onclick="document.getElementById('delete-confirm').classList.toggle('hidden')">✕ Delete</button>
   {% endif %}
+
+  {% if (conv_request.source or "plex") == "upload" %}
+    {% for job in conv_request.jobs if job.status.value == "completed" and job.output_file %}
+    <a href="/requests/{{ conv_request.id }}/download/{{ job.id }}" class="btn btn-sm btn-primary"><i class="fa-solid fa-download"></i> Download Clean File</a>
+    {% endfor %}
+  {% endif %}
 </div>
 
 <div id="edit-form" class="edit-box hidden">
