@@ -913,7 +913,6 @@ async def activity_feed(
     db: Session = Depends(get_db),
     user: User = Depends(require_admin),
 ):
-    from ..tasks import is_task_running, TASK_REGISTRY
     from ..models import SystemTaskRun
 
     running_tasks = (

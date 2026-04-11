@@ -331,7 +331,7 @@ def test_sync_search_case_insensitive_match(db_session):
     mock_client.resolve_file_path.return_value = "/mnt/media/matrix.mkv"
 
     with patch("app.tasks.sync_plex_paths.PlexClient", return_value=mock_client):
-        result = sync_plex_paths(db_session, lambda c, t: None)
+        sync_plex_paths(db_session, lambda c, t: None)
 
     db_session.refresh(job)
     assert job.plex_key == "NEW"
@@ -461,7 +461,7 @@ def test_run_task_redirects(admin_client, db_session):
 def test_run_already_running_task(admin_client, db_session):
     """Running an already-running task should still redirect (with flash)."""
     from app.tasks.registry import TASK_REGISTRY, TaskDefinition
-    from app.tasks.runner import _running_lock, _running_tasks
+    from app.tasks.runner import _running_tasks
 
     barrier = threading.Event()
 
