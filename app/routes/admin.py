@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import asyncio
+import json as _json
+
 import secrets
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
 from ..auth.password import hash_password
@@ -805,3 +808,209 @@ def _rollup_request(db: Session, request_id: int) -> None:
             notify_request_status_change(db, req, req.status)
         except Exception:
             pass
+
+
+# ── System Tasks ────────────────────────────────────────────────────────────
+
+
+@router.get("/tasks", response_class=HTMLResponse)
+async def admin_tasks(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    from ..tasks import TASK_REGISTRY, is_task_running
+    from ..models import SystemTaskRun
+
+    tasks_info = []
+    for defn in TASK_REGISTRY.values():
+        last_run = (
+            db.query(SystemTaskRun)
+            .filter(SystemTaskRun.task_name == defn.name)
+            .order_by(SystemTaskRun.started_at.desc())
+            .first()
+        )
+        running = is_task_running(defn.name)
+        tasks_info.append(
+            {
+                "name": defn.name,
+                "display_name": defn.display_name,
+                "description": defn.description,
+                "icon": defn.icon,
+                "last_run": last_run,
+                "running": running,
+            }
+        )
+
+    return templates.TemplateResponse(
+        "admin/tasks.html",
+        {"request": request, "user": user, "tasks": tasks_info},
+    )
+
+
+@router.get("/tasks/status", response_class=HTMLResponse)
+async def admin_tasks_status(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    from ..tasks import TASK_REGISTRY, is_task_running
+    from ..models import SystemTaskRun
+
+    tasks_info = []
+    for defn in TASK_REGISTRY.values():
+        last_run = (
+            db.query(SystemTaskRun)
+            .filter(SystemTaskRun.task_name == defn.name)
+            .order_by(SystemTaskRun.started_at.desc())
+            .first()
+        )
+        running = is_task_running(defn.name)
+        tasks_info.append(
+            {
+                "name": defn.name,
+                "display_name": defn.display_name,
+                "description": defn.description,
+                "icon": defn.icon,
+                "last_run": last_run,
+                "running": running,
+            }
+        )
+
+    return templates.TemplateResponse(
+        "admin/_tasks_rows.html",
+        {"request": request, "tasks": tasks_info},
+    )
+
+
+@router.post("/tasks/{task_name}/run", response_class=HTMLResponse)
+async def run_task(
+    request: Request,
+    task_name: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    from ..tasks import TASK_REGISTRY, trigger_task
+
+    if task_name not in TASK_REGISTRY:
+        raise HTTPException(status_code=404, detail="Unknown task.")
+
+    run = trigger_task(task_name, user.username)
+    if run is None:
+        redirect = RedirectResponse("/admin/tasks", status_code=303)
+        set_flash(redirect, "Task is already running.", "info")
+        return redirect
+
+    redirect = RedirectResponse("/admin/tasks", status_code=303)
+    defn = TASK_REGISTRY[task_name]
+    set_flash(redirect, f"Started: {defn.display_name}", "success")
+    return redirect
+
+
+@router.get("/activity-feed", response_class=HTMLResponse)
+async def activity_feed(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    from ..tasks import is_task_running, TASK_REGISTRY
+    from ..models import SystemTaskRun
+
+    running_tasks = (
+        db.query(SystemTaskRun)
+        .filter(SystemTaskRun.status == "running")
+        .order_by(SystemTaskRun.started_at.desc())
+        .all()
+    )
+
+    recent_task = None
+    if not running_tasks:
+        recent_task = (
+            db.query(SystemTaskRun)
+            .filter(SystemTaskRun.status.in_(["completed", "failed"]))
+            .order_by(SystemTaskRun.finished_at.desc())
+            .first()
+        )
+
+    has_running = len(running_tasks) > 0
+
+    from datetime import datetime
+    return templates.TemplateResponse(
+        "admin/_activity_feed.html",
+        {
+            "request": request,
+            "running_tasks": running_tasks,
+            "recent_task": recent_task,
+            "has_running": has_running,
+            "now": datetime.utcnow(),
+        },
+    )
+
+
+@router.get("/tasks/events")
+async def task_events(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    """SSE endpoint streaming task progress updates."""
+    from ..models import SystemTaskRun
+    from ..database import SessionLocal
+
+    async def event_stream():
+        last_data = None
+        while True:
+            if await request.is_disconnected():
+                break
+            poll_db = SessionLocal()
+            try:
+                running = (
+                    poll_db.query(SystemTaskRun)
+                    .filter(SystemTaskRun.status == "running")
+                    .order_by(SystemTaskRun.started_at.desc())
+                    .all()
+                )
+                if running:
+                    tasks = []
+                    for r in running:
+                        tasks.append({
+                            "name": r.display_name,
+                            "current": r.progress_current,
+                            "total": r.progress_total,
+                            "status": "running",
+                        })
+                    data = _json.dumps({"running": True, "tasks": tasks})
+                else:
+                    recent = (
+                        poll_db.query(SystemTaskRun)
+                        .filter(SystemTaskRun.status.in_(["completed", "failed"]))
+                        .order_by(SystemTaskRun.finished_at.desc())
+                        .first()
+                    )
+                    if recent:
+                        data = _json.dumps({
+                            "running": False,
+                            "name": recent.display_name,
+                            "status": recent.status,
+                            "result": recent.result_message or recent.error_message or "",
+                        })
+                    else:
+                        data = _json.dumps({"running": False, "status": "idle"})
+            finally:
+                poll_db.close()
+
+            if data != last_data:
+                yield f"data: {data}\n\n"
+                last_data = data
+
+            # If nothing running, send one final update and close
+            if not running:
+                break
+
+            await asyncio.sleep(0.5)
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )

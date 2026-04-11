@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}System Tasks – Admin – CleanArr{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <h1><i class="fa-solid fa-gears"></i> System Tasks</h1>
+</div>
+
+<div id="flash-bar-slot">
+  {% if flash_msg %}
+  <div class="alert alert-{{ flash_level }}" id="flash-bar" style="display:flex;justify-content:space-between;align-items:center">
+    <span>{{ flash_msg }}</span>
+    <button onclick="this.parentElement.remove()" style="background:none;border:none;color:inherit;cursor:pointer;font-size:1.2rem;padding:0 0.25rem">&times;</button>
+  </div>
+  {% endif %}
+</div>
+
+<table class="data-table">
+  <thead>
+    <tr>
+      <th>Task</th>
+      <th>Status</th>
+      <th>Last Run</th>
+      <th>Result</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody hx-get="/admin/tasks/status" hx-trigger="every 5s" hx-swap="innerHTML">
+    {% include 'admin/_tasks_rows.html' %}
+  </tbody>
+</table>
+{% endblock %}

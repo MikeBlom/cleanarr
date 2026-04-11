@@ -235,6 +235,8 @@ a:hover { text-decoration: underline; }
   z-index: 90;
   transition: width 0.2s ease;
   padding-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebar-item {
@@ -888,3 +890,65 @@ th.sortable:hover { color: var(--brand-light); }
   cursor: pointer;
 }
 .report-modal__close:hover { color: var(--text); }
+
+
+/* ── Sidebar Activity Feed ──────────────────────────────────────────────── */
+.sidebar-activity {
+  margin-top: auto;
+  padding: 0.6rem 1rem;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.activity-feed {
+  font-size: 0.8rem;
+}
+
+.activity-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.2rem 0;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.activity-item i {
+  flex-shrink: 0;
+  width: 1rem;
+  text-align: center;
+}
+
+.activity-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.activity-running { color: var(--running); }
+.activity-completed i { color: var(--success); }
+.activity-failed i { color: var(--danger); }
+.activity-idle { opacity: 0.6; }
+
+/* Collapsed sidebar: hide activity text */
+.page-sidebar--collapsed .sidebar-activity { padding: 0.6rem 0; text-align: center; }
+.page-sidebar--collapsed .activity-item { justify-content: center; gap: 0; }
+.page-sidebar--collapsed .activity-text { display: none; }
+
+/* Badge for idle state on tasks page */
+.badge-idle { background: var(--badge-queued-bg); color: var(--badge-queued-fg); }
+
+.text-muted { color: var(--text-muted); }
+
+.activity-progress {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+
+@keyframes activity-fade {
+  0%, 80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.activity-fadeout {
+  animation: activity-fade 8s ease forwards;
+}

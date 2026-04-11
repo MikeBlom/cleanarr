@@ -1,0 +1,75 @@
+{% if running_tasks %}
+  {% for run in running_tasks %}
+  <div class="activity-item activity-running" id="activity-feed-content">
+    <i class="fa-solid fa-spinner fa-spin"></i>
+    <span class="activity-text">
+      {{ run.display_name }}
+      {% if run.progress_total %}
+        <span class="activity-progress">{{ run.progress_current or 0 }} / {{ run.progress_total }}</span>
+      {% endif %}
+    </span>
+  </div>
+  {% endfor %}
+  <script>
+  (function(){
+    var container = document.getElementById('sidebar-activity');
+    if (!container || container._sse) return;
+    container._sse = true;
+    // Stop HTMX polling while SSE is active
+    container.removeAttribute('hx-trigger');
+    htmx.process(container);
+    var es = new EventSource('/admin/tasks/events');
+    es.onmessage = function(e) {
+      try {
+        var d = JSON.parse(e.data);
+        if (d.running && d.tasks) {
+          var html = '';
+          d.tasks.forEach(function(t) {
+            var prog = '';
+            if (t.total) prog = ' <span class="activity-progress">' + (t.current || 0) + ' / ' + t.total + '</span>';
+            html += '<div class="activity-item activity-running">'
+              + '<i class="fa-solid fa-spinner fa-spin"></i>'
+              + '<span class="activity-text">' + t.name + prog + '</span>'
+              + '</div>';
+          });
+          container.innerHTML = html;
+        } else {
+          // Task finished — show result briefly then fade
+          es.close();
+          container._sse = false;
+          var icon = d.status === 'completed' ? 'fa-circle-check' : 'fa-circle-xmark';
+          var cls = d.status === 'completed' ? 'activity-completed' : 'activity-failed';
+          container.innerHTML = '<div class="activity-item ' + cls + ' activity-fadeout">'
+            + '<i class="fa-solid ' + icon + '"></i>'
+            + '<span class="activity-text">' + (d.name || 'Task') + '</span>'
+            + '</div>';
+          // Fade out after 8 seconds, then restore polling
+          setTimeout(function(){
+            container.innerHTML = '';
+            container.setAttribute('hx-trigger', 'load, every 5s');
+            htmx.process(container);
+          }, 8000);
+        }
+      } catch(err) {}
+    };
+    es.onerror = function() {
+      es.close();
+      container._sse = false;
+      container.setAttribute('hx-trigger', 'load, every 5s');
+      htmx.process(container);
+    };
+  })();
+  </script>
+{% elif recent_task %}
+  {% set age = (now - recent_task.finished_at).total_seconds() if recent_task.finished_at else 9999 %}
+  {% if age < 30 %}
+    <div class="activity-item activity-{{ recent_task.status }} activity-fadeout" style="animation-delay: {{ (8 - age)|round(0,'floor')|int }}s">
+      {% if recent_task.status == 'completed' %}
+        <i class="fa-solid fa-circle-check"></i>
+      {% else %}
+        <i class="fa-solid fa-circle-xmark"></i>
+      {% endif %}
+      <span class="activity-text">{{ recent_task.display_name }}</span>
+    </div>
+  {% endif %}
+{% endif %}

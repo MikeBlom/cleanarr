@@ -1,0 +1,49 @@
+{% for task in tasks %}
+<tr>
+  <td>
+    <i class="fa-solid {{ task.icon }}" style="margin-right:0.4rem;opacity:0.7"></i>
+    <strong>{{ task.display_name }}</strong>
+    <br><small class="text-muted">{{ task.description }}</small>
+  </td>
+  <td>
+    {% if task.running %}
+      <span class="badge badge-running"><i class="fa-solid fa-spinner fa-spin"></i> Running</span>
+      {% if task.last_run and task.last_run.progress_total %}
+        <br><small>{{ task.last_run.progress_current or 0 }} / {{ task.last_run.progress_total }}</small>
+      {% endif %}
+    {% elif task.last_run %}
+      <span class="badge badge-{{ task.last_run.status }}">{{ task.last_run.status | capitalize }}</span>
+    {% else %}
+      <span class="badge badge-idle">Idle</span>
+    {% endif %}
+  </td>
+  <td>
+    {% if task.last_run %}
+      {{ task.last_run.started_at.strftime("%Y-%m-%d %H:%M") }}
+      {% if task.last_run.triggered_by %}
+        <br><small class="text-muted">by {{ task.last_run.triggered_by }}</small>
+      {% endif %}
+    {% else %}
+      —
+    {% endif %}
+  </td>
+  <td>
+    {% if task.running %}
+      <span class="text-muted">In progress…</span>
+    {% elif task.last_run and task.last_run.status == 'completed' %}
+      {{ task.last_run.result_message or '—' }}
+    {% elif task.last_run and task.last_run.status == 'failed' %}
+      <span style="color:var(--danger)">{{ task.last_run.error_message or 'Unknown error' }}</span>
+    {% else %}
+      —
+    {% endif %}
+  </td>
+  <td>
+    <form method="post" action="/admin/tasks/{{ task.name }}/run" style="display:inline">
+      <button class="btn btn-sm btn-primary" type="submit" {% if task.running %}disabled{% endif %}>
+        <i class="fa-solid fa-play"></i> Run
+      </button>
+    </form>
+  </td>
+</tr>
+{% endfor %}

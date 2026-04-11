@@ -71,6 +71,10 @@
       <i class="fa-solid fa-users sidebar-item__icon"></i>
       <span class="sidebar-item__text">Users</span>
     </a>
+    <a href="/admin/tasks" class="sidebar-item {% if request.url.path == '/admin/tasks' %}sidebar-item--active{% endif %}">
+      <i class="fa-solid fa-gears sidebar-item__icon"></i>
+      <span class="sidebar-item__text">Tasks</span>
+    </a>
     <div class="sidebar-section">Settings</div>
     {% for slug, icon, label in [
       ("plex", "fa-server", "Plex"),
@@ -88,6 +92,14 @@
       <span class="sidebar-item__text">{{ label }}</span>
     </a>
     {% endfor %}
+    {% endif %}
+    {% if user and user.is_admin %}
+    <div class="sidebar-activity"
+         id="sidebar-activity"
+         hx-get="/admin/activity-feed"
+         hx-trigger="load, every 5s"
+         hx-swap="innerHTML">
+    </div>
     {% endif %}
   </nav>
 
