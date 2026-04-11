@@ -75,23 +75,29 @@
       <i class="fa-solid fa-gears sidebar-item__icon"></i>
       <span class="sidebar-item__text">Tasks</span>
     </a>
-    <div class="sidebar-section">Settings</div>
-    {% for slug, icon, label in [
-      ("plex", "fa-server", "Plex"),
-      ("paths", "fa-folder-tree", "Paths"),
-      ("worker", "fa-microchip", "Worker"),
-      ("profanity", "fa-volume-xmark", "Profanity"),
-      ("nudity", "fa-eye-slash", "Nudity"),
-      ("violence", "fa-shield-halved", "Violence"),
-      ("ai", "fa-robot", "AI Advisor"),
-      ("email", "fa-envelope", "Email"),
-      ("notifications", "fa-bell", "Notifications"),
-    ] %}
-    <a href="/admin/settings/{{ slug }}" class="sidebar-item sidebar-item--sub {% if request.url.path == '/admin/settings/' ~ slug %}sidebar-item--active{% endif %}">
-      <i class="fa-solid {{ icon }} sidebar-item__icon"></i>
-      <span class="sidebar-item__text">{{ label }}</span>
+    <a href="/admin/settings/plex" class="sidebar-item {% if request.url.path.startswith('/admin/settings') %}sidebar-item--active{% endif %}" id="settings-toggle">
+      <i class="fa-solid fa-sliders sidebar-item__icon"></i>
+      <span class="sidebar-item__text">Settings</span>
+      <i class="fa-solid fa-chevron-down sidebar-item__chevron" id="settings-chevron"></i>
     </a>
-    {% endfor %}
+    <div class="sidebar-settings-dropdown {% if request.url.path.startswith('/admin/settings') %}sidebar-settings-dropdown--open{% endif %}" id="settings-dropdown">
+      {% for slug, icon, label in [
+        ("plex", "fa-server", "Plex"),
+        ("paths", "fa-folder-tree", "Paths"),
+        ("worker", "fa-microchip", "Worker"),
+        ("profanity", "fa-volume-xmark", "Profanity"),
+        ("nudity", "fa-eye-slash", "Nudity"),
+        ("violence", "fa-shield-halved", "Violence"),
+        ("ai", "fa-robot", "AI Advisor"),
+        ("email", "fa-envelope", "Email"),
+        ("notifications", "fa-bell", "Notifications"),
+      ] %}
+      <a href="/admin/settings/{{ slug }}" class="sidebar-item sidebar-item--sub {% if request.url.path == '/admin/settings/' ~ slug %}sidebar-item--active{% endif %}">
+        <i class="fa-solid {{ icon }} sidebar-item__icon"></i>
+        <span class="sidebar-item__text">{{ label }}</span>
+      </a>
+      {% endfor %}
+    </div>
     {% endif %}
     {% if user and user.is_admin %}
     <div class="sidebar-activity"
@@ -154,6 +160,24 @@
       }
       updateThemeIcon();
     });
+
+    // Settings dropdown
+    var settingsToggle = document.getElementById('settings-toggle');
+    var settingsDropdown = document.getElementById('settings-dropdown');
+    if (settingsToggle && settingsDropdown) {
+      // Sync chevron with dropdown state on load
+      if (settingsDropdown.classList.contains('sidebar-settings-dropdown--open')) {
+        settingsToggle.classList.add('sidebar-item--settings-open');
+      }
+      // Collapse when clicking any non-settings sidebar link
+      var sidebarLinks = sidebar.querySelectorAll('.sidebar-item:not(#settings-toggle):not(.sidebar-item--sub)');
+      for (var i = 0; i < sidebarLinks.length; i++) {
+        sidebarLinks[i].addEventListener('click', function(){
+          settingsDropdown.classList.remove('sidebar-settings-dropdown--open');
+          settingsToggle.classList.remove('sidebar-item--settings-open');
+        });
+      }
+    }
   })();
   </script>
   {% endif %}
