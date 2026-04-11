@@ -145,4 +145,25 @@ def _migrate() -> None:
             if col_name not in user_cols:
                 conn.execute(text(f"ALTER TABLE users ADD COLUMN {col}"))
 
+        # system_task_runs migrations
+        if "system_task_runs" in [
+            r[0]
+            for r in conn.execute(
+                text("SELECT name FROM sqlite_master WHERE type='table'")
+            ).fetchall()
+        ]:
+            result_st = conn.execute(text("PRAGMA table_info(system_task_runs)"))
+            st_cols = {row[1] for row in result_st}
+            if "progress_current" not in st_cols:
+                conn.execute(
+                    text(
+                        "ALTER TABLE system_task_runs ADD COLUMN progress_current INTEGER"
+                    )
+                )
+            if "progress_total" not in st_cols:
+                conn.execute(
+                    text(
+                        "ALTER TABLE system_task_runs ADD COLUMN progress_total INTEGER"
+                    )
+                )
         conn.commit()
