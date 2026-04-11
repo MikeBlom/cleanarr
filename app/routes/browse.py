@@ -285,11 +285,41 @@ def ai_filter_advice(
         if imdb_id:
             guide = get_parental_guide(imdb_id, db)
             if guide:
+                from concurrent.futures import ThreadPoolExecutor
+
                 ollama_url = _as.get(db, "ollama_url")
                 ollama_model = _as.get(db, "ollama_model")
-                nudity_rec = evaluate_nudity(guide, ollama_url, ollama_model)
-                profanity_rec = evaluate_profanity(guide, ollama_url, ollama_model)
-                violence_rec = evaluate_violence(guide, ollama_url, ollama_model)
+                nudity_cats = _as.get(db, "nudity_categories")
+                prof_words = _as.get(db, "profanity_words")
+                prof_phrases = _as.get(db, "profanity_phrases")
+                violence_cats = _as.get(db, "violence_categories")
+
+                with ThreadPoolExecutor(max_workers=3) as pool:
+                    fut_n = pool.submit(
+                        evaluate_nudity,
+                        guide,
+                        ollama_url,
+                        ollama_model,
+                        categories=nudity_cats,
+                    )
+                    fut_p = pool.submit(
+                        evaluate_profanity,
+                        guide,
+                        ollama_url,
+                        ollama_model,
+                        words=prof_words,
+                        phrases=prof_phrases,
+                    )
+                    fut_v = pool.submit(
+                        evaluate_violence,
+                        guide,
+                        ollama_url,
+                        ollama_model,
+                        categories=violence_cats,
+                    )
+                    nudity_rec = fut_n.result()
+                    profanity_rec = fut_p.result()
+                    violence_rec = fut_v.result()
 
     return templates.TemplateResponse(
         "browse/_ai_filter_advice.html",

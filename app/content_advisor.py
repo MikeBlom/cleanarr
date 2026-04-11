@@ -23,20 +23,33 @@ class FilterRecommendation:
     reason: str  # brief explanation for the user
 
 
+_CATEGORY_LABELS = {
+    "FEMALE_BREAST_EXPOSED": "female breasts exposed",
+    "FEMALE_GENITALIA_EXPOSED": "female genitalia exposed",
+    "MALE_GENITALIA_EXPOSED": "male genitalia exposed",
+    "ANUS_EXPOSED": "anus exposed",
+    "BUTTOCKS_EXPOSED": "buttocks exposed",
+    "GORE_BLOODSHED": "gore / bloodshed",
+    "VIOLENCE_FIGHTING": "violence / fighting",
+}
+
+
+def _format_categories(raw: str | None) -> str:
+    """Turn a comma-separated category string into a readable list."""
+    if not raw:
+        return "(all categories)"
+    cats = [c.strip() for c in raw.split(",") if c.strip()]
+    return ", ".join(_CATEGORY_LABELS.get(c, c.lower().replace("_", " ")) for c in cats)
+
+
 def evaluate_nudity(
     guide: dict,
     ollama_url: str,
     ollama_model: str,
+    *,
+    categories: str | None = None,
 ) -> FilterRecommendation:
-    """Decide if nudity filtering is warranted based on IMDB descriptions.
-
-    We only care about actual exposed nudity matching our detection categories:
-    female breast exposed, female genitalia exposed, male genitalia exposed,
-    anus exposed, buttocks exposed.
-
-    If the LLM can't make a determination or input is insufficient, we lean
-    towards recommending filtering (safe default).
-    """
+    """Decide if nudity filtering is warranted based on IMDB descriptions."""
     nudity_info = guide.get("nudity")
     if not nudity_info:
         return FilterRecommendation(
@@ -47,7 +60,6 @@ def evaluate_nudity(
     severity = nudity_info.get("severity", "Unknown")
     descriptions = nudity_info.get("descriptions", [])
 
-    # IMDB says None — no nudity, no need for the LLM
     if severity.lower() == "none":
         return FilterRecommendation(
             should_filter=False,
@@ -55,36 +67,23 @@ def evaluate_nudity(
         )
 
     if not descriptions:
-        # Has a severity rating but no descriptions — insufficient info, lean safe
         return FilterRecommendation(
             should_filter=True,
             reason=f"IMDB rates nudity as {severity} but no details available; recommending filter to be safe.",
         )
 
-    prompt = f"""You are a content filter advisor. Based ONLY on the IMDB parental guide descriptions below, determine if there is actual exposed nudity that a video filter would need to black out.
+    cat_list = _format_categories(categories)
 
-We ONLY filter for these specific types of on-screen visual nudity:
-- Female breasts exposed (not cleavage)
-- Female genitalia exposed
-- Male genitalia exposed
-- Anus exposed
-- Buttocks exposed
+    prompt = f"""The user has a video content filter that detects and blacks out specific types of on-screen nudity. Their filter is configured to detect: {cat_list}.
 
-We do NOT filter for any of the following — these are NOT nudity:
-- Sexual dialogue, innuendo, or verbal references
-- Kissing, hugging, or romantic scenes
-- Characters in swimwear, underwear, or revealing clothing
-- Implied sex (under covers, scene cuts away, nothing shown)
-- Cleavage or partial nudity that does not fully expose the above body parts
-- Shirtless men
-- Non-sexual body exposure (e.g. medical, breastfeeding)
-
-IMPORTANT: Only report nudity that is EXPLICITLY described in the text below. Do NOT infer or assume nudity that is not clearly stated. If the descriptions only mention kissing, romance, dialogue, or implied scenes, the answer is should_filter: false.
+Below are the IMDB parental guide descriptions of the sexual/nudity content in this video. Based on these descriptions, is there actual visible nudity matching the categories above that the filter would need to black out?
 
 IMDB Severity: {severity}
 
-IMDB Descriptions:
+Descriptions:
 {chr(10).join(f"- {d}" for d in descriptions)}
+
+Only consider nudity that is explicitly described as visible on screen. Do NOT flag: implied scenes, sexual dialogue, kissing, swimwear, cleavage, underwear, shirtless men, or scenes that cut away before showing anything. If the descriptions only mention these things, the answer is should_filter: false.
 
 Respond with ONLY a JSON object (no markdown, no code fences):
 {{"should_filter": true/false, "reason": "brief 1-sentence explanation"}}"""
@@ -98,12 +97,11 @@ def evaluate_profanity(
     guide: dict,
     ollama_url: str,
     ollama_model: str,
+    *,
+    words: str | None = None,
+    phrases: str | None = None,
 ) -> FilterRecommendation:
-    """Decide if profanity filtering is warranted based on IMDB descriptions.
-
-    If IMDB says no profanity, or the profanity is mild/not the type we filter,
-    we recommend skipping the filter. If insufficient info, lean towards filtering.
-    """
+    """Decide if profanity filtering is warranted based on IMDB descriptions."""
     prof_info = guide.get("profanity")
     if not prof_info:
         return FilterRecommendation(
@@ -114,7 +112,6 @@ def evaluate_profanity(
     severity = prof_info.get("severity", "Unknown")
     descriptions = prof_info.get("descriptions", [])
 
-    # IMDB says None — no profanity, no need for the LLM
     if severity.lower() == "none":
         return FilterRecommendation(
             should_filter=False,
@@ -127,22 +124,29 @@ def evaluate_profanity(
             reason=f"IMDB rates profanity as {severity} but no details available; recommending filter to be safe.",
         )
 
-    prompt = f"""You are a content filter advisor. Based ONLY on the IMDB parental guide descriptions below, determine if there is profanity present that would need audio filtering.
+    word_list = ", ".join(w.strip() for w in (words or "").splitlines() if w.strip())
+    phrase_list = ", ".join(
+        f'"{p.strip()}"' for p in (phrases or "").splitlines() if p.strip()
+    )
 
-We filter for strong profanity including: fuck, shit, ass, asshole, bitch, bastard, damn, goddamn, cunt, cock, dick, pussy, whore, slut, racial slurs, and similar strong language.
+    filter_desc = "The user has an audio content filter that mutes specific profanity."
+    if word_list:
+        filter_desc += f" Their filter is configured to mute these words: {word_list}."
+    if phrase_list:
+        filter_desc += f" And these phrases: {phrase_list}."
+    if not word_list and not phrase_list:
+        filter_desc += " It targets strong profanity (e.g. fuck, shit, bitch, damn, goddamn, slurs, and similar)."
 
-We do NOT need to filter for:
-- Mild exclamations like "oh my god", "gosh", "heck", "darn"
-- Words used in non-profane context
-- Foreign language that isn't recognizable as English profanity
-- Descriptions that say there is NO profanity or only mild language
+    prompt = f"""{filter_desc}
 
-IMPORTANT: Only report profanity that is EXPLICITLY mentioned in the text below. Do NOT infer or assume profanity that is not clearly stated.
+Below are the IMDB parental guide descriptions of the profanity/language in this video. Based on these descriptions, is there profanity present that matches the words or phrases the filter is looking for?
 
 IMDB Severity: {severity}
 
-IMDB Descriptions:
+Descriptions:
 {chr(10).join(f"- {d}" for d in descriptions)}
+
+Only consider profanity that is explicitly mentioned in the descriptions. Do NOT flag: mild exclamations ("oh my god", "gosh", "heck"), words used in non-profane context, foreign language, or descriptions that say there is no strong profanity. If the descriptions only mention mild language, the answer is should_filter: false.
 
 Respond with ONLY a JSON object (no markdown, no code fences):
 {{"should_filter": true/false, "reason": "brief 1-sentence explanation"}}"""
@@ -156,6 +160,8 @@ def evaluate_violence(
     guide: dict,
     ollama_url: str,
     ollama_model: str,
+    *,
+    categories: str | None = None,
 ) -> FilterRecommendation:
     """Decide if violence/gore filtering is warranted based on IMDB descriptions."""
     violence_info = guide.get("violence")
@@ -180,28 +186,18 @@ def evaluate_violence(
             reason=f"IMDB rates violence as {severity} but no details available; recommending filter to be safe.",
         )
 
-    prompt = f"""You are a content filter advisor. Based ONLY on the IMDB parental guide descriptions below, determine if there is graphic violence, gore, or bloodshed that a video filter should black out.
+    cat_list = _format_categories(categories)
 
-We ONLY filter for these specific types of on-screen visual content:
-- Graphic gore or bloodshed (visible blood, wounds, dismemberment)
-- Intense physical violence (brutal beatings, stabbings, shootings with visible impact)
-- Torture scenes with graphic detail
-- Graphic war violence
+    prompt = f"""The user has a video content filter that detects and blacks out graphic violence. Their filter is configured to detect: {cat_list}.
 
-We do NOT filter for:
-- Mild action violence (punches, chases, comic-book style fighting)
-- Off-screen violence or implied violence
-- Verbal threats or intimidation
-- Suspenseful or tense scenes without graphic content
-- Slapstick or cartoon violence
-- Brief, non-graphic fight scenes
-
-IMPORTANT: Only report violence that is EXPLICITLY described as graphic or gory in the text below. Do NOT infer or assume graphic content that is not clearly stated.
+Below are the IMDB parental guide descriptions of the violence/gore in this video. Based on these descriptions, is there graphic visual violence matching the categories above that the filter would need to black out?
 
 IMDB Severity: {severity}
 
-IMDB Descriptions:
+Descriptions:
 {chr(10).join(f"- {d}" for d in descriptions)}
+
+Only consider violence that is explicitly described as graphic or visually shown on screen. Do NOT flag: mild action violence, off-screen violence, verbal threats, suspenseful scenes, slapstick, or brief non-graphic fights. If the descriptions only mention mild or implied violence, the answer is should_filter: false.
 
 Respond with ONLY a JSON object (no markdown, no code fences):
 {{"should_filter": true/false, "reason": "brief 1-sentence explanation"}}"""
