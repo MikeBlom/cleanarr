@@ -239,9 +239,7 @@ def test_sync_updates_path(db_session):
 
     progress_calls = []
     with patch("app.tasks.sync_plex_paths.PlexClient", return_value=mock_client):
-        result = sync_plex_paths(
-            db_session, lambda c, t: progress_calls.append((c, t))
-        )
+        result = sync_plex_paths(db_session, lambda c, t: progress_calls.append((c, t)))
 
     db_session.refresh(job)
     assert job.input_file == "/mnt/media/new/path/movie.mkv"

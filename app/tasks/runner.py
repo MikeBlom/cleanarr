@@ -75,8 +75,6 @@ def trigger_task(task_name: str, triggered_by: str) -> SystemTaskRun | None:
             with _running_lock:
                 _running_tasks.discard(task_name)
 
-    thread = threading.Thread(
-        target=_execute, name=f"task-{task_name}", daemon=True
-    )
+    thread = threading.Thread(target=_execute, name=f"task-{task_name}", daemon=True)
     thread.start()
     return run

@@ -85,11 +85,7 @@ def sync_plex_paths(db: Session, set_progress: Callable[[int, int], None]) -> st
 
     # Update parent request plex_keys
     for req_id, new_key in request_key_updates.items():
-        req = (
-            db.query(ConversionRequest)
-            .filter(ConversionRequest.id == req_id)
-            .first()
-        )
+        req = db.query(ConversionRequest).filter(ConversionRequest.id == req_id).first()
         if req:
             req.plex_key = new_key
 

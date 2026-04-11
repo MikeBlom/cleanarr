@@ -934,6 +934,7 @@ async def activity_feed(
     has_running = len(running_tasks) > 0
 
     from datetime import datetime
+
     return templates.TemplateResponse(
         "admin/_activity_feed.html",
         {
@@ -972,12 +973,14 @@ async def task_events(
                 if running:
                     tasks = []
                     for r in running:
-                        tasks.append({
-                            "name": r.display_name,
-                            "current": r.progress_current,
-                            "total": r.progress_total,
-                            "status": "running",
-                        })
+                        tasks.append(
+                            {
+                                "name": r.display_name,
+                                "current": r.progress_current,
+                                "total": r.progress_total,
+                                "status": "running",
+                            }
+                        )
                     data = _json.dumps({"running": True, "tasks": tasks})
                 else:
                     recent = (
@@ -987,12 +990,16 @@ async def task_events(
                         .first()
                     )
                     if recent:
-                        data = _json.dumps({
-                            "running": False,
-                            "name": recent.display_name,
-                            "status": recent.status,
-                            "result": recent.result_message or recent.error_message or "",
-                        })
+                        data = _json.dumps(
+                            {
+                                "running": False,
+                                "name": recent.display_name,
+                                "status": recent.status,
+                                "result": recent.result_message
+                                or recent.error_message
+                                or "",
+                            }
+                        )
                     else:
                         data = _json.dumps({"running": False, "status": "idle"})
             finally:
